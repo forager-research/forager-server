@@ -1,0 +1,57 @@
+{
+  "name": "frontend",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^1.2.34",
+    "@fortawesome/free-solid-svg-icons": "^5.15.2",
+    "@fortawesome/react-fontawesome": "^0.1.15",
+    "classnames": "^2.3.1",
+    "dateformat": "^4.5.1",
+    "disjoint-set": "^1.1.8",
+    "konva": "^8.1.3",
+    "lodash": "^4.17.20",
+    "node-sass": "^6.0.1",
+    "rc-slider": "^9.7.1",
+    "react": "^17.0.2",
+    "react-bootstrap-typeahead": "^5.1.4",
+    "react-dropzone": "^11.3.2",
+    "react-emoji-render": "^1.2.4",
+    "react-konva": "^17.0.2-5",
+    "react-lazyload": "^3.2.0",
+    "react-paginate": "^7.1.2",
+    "react-router-dom": "^5.2.0",
+    "react-scripts": "^4.0.3",
+    "react-spinners": "^0.11.0",
+    "react-svg": "^11.2.3",
+    "react-time-ago": "^6.2.2",
+    "react-useinterval": "^1.0.2",
+    "reactstrap": "^8.7.1",
+    "styled-components": "^5.2.1",
+    "use-image": "^1.0.7",
+    "use-resize-observer": "^7.0.0",
+    "uuid": "^8.3.2"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}

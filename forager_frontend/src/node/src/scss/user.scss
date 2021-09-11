@@ -1,0 +1,373 @@
+//
+//
+// user.scss
+//
+// Place your own custom CSS or SCSS rules below this line, these rules will override any Bootstrap and theme variables.
+
+$primary-alt: mix($primary,$white,6%);
+$primary-alt-lighter: mix($primary,$white,2%);
+$primary-alt-darker: mix($primary,$white,8%);
+
+body, .popover {
+  font-family: proxima-nova, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html, body, #root, .main {
+  height: 100%;
+}
+
+.loading,
+.loading input,
+.loading textarea,
+.loading .stack,
+.loading label,
+.loading div,
+.loading button,
+.loading a {
+  cursor: wait !important;
+}
+
+.app {
+  position: relative;
+  padding-bottom: 2rem;
+}
+
+.modal-full {
+  max-width: calc(100% - 2.5rem);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.cluster-modal, .active-val-modal {
+  a.selectable-image, img.main {
+    display: block;
+    max-width: 65%;
+    margin-left: auto;
+    margin-right: auto;
+    position: relative;
+
+    .state {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+    }
+  }
+
+  img.main {
+    border: 5px solid white;
+  }
+
+  a.selectable-image img {
+    width: 100%;
+  }
+}
+
+.image-grid a {
+  display: inline-block;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.image-grid a, a.selectable-image {
+  img {
+    border-radius: 3px;
+    border: 5px solid white;
+
+    &.selected {
+      border-color: mix($warning, $white, 50%);
+    }
+  }
+
+  .image {
+    border-radius: 3px;
+    border: 5px solid white;
+
+    &.selected {
+      border-color: mix($warning, $white, 50%);
+    }
+  }
+}
+
+.typeahead-bar {
+  width: 100%;
+}
+
+.query-container {
+  padding-top: 1rem;
+  padding-bottom: 1.25rem;
+  position: sticky;
+  top: 0;
+  background: linear-gradient($primary-alt-lighter 85%, rgba($primary-alt-lighter, 0));
+  z-index: 10;
+  width: 100%;
+
+  select {
+    width: 10rem;
+  }
+
+  .rc-slider {
+    width: 10rem;
+  }
+
+  .clustering-feature-bar {
+    width: 16rem;
+  }
+}
+
+.mode-container {
+  select, input:not(.rbt-input) {
+    width: 12rem;
+  }
+  .collapse {
+      select, input {
+          width: 100%;
+      }
+  }
+}
+
+.new-mode-input {
+  width: 8rem;
+  padding-left: 0.6rem;
+  padding-right: 0.6rem;
+  display: inline;
+}
+
+.stack-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 215px);
+  grid-gap: 1rem;
+  justify-content: space-between;
+}
+
+.stack {
+  width: 215px;
+  height: 180px;
+  transition: transform 0.2s;
+  display: block;
+
+  cursor: pointer;
+  position: relative;
+
+  .thumb-container {
+    @extend .border;
+    border-radius: 4px;
+    position: absolute;
+  }
+
+  .thumb {
+    max-width: 200px;
+    max-height: 134px;
+  }
+
+  @for $i from 1 through 4 {
+    .thumb-container:nth-child(#{$i}) {
+      left: ($i - 1) * 5px;
+      top: (4 - $i) * 5px;
+      z-index: 5 - $i;
+    }
+  }
+
+  &.nolabel {
+    height: 149px;
+  }
+
+  .label {
+    position: absolute;
+    bottom: 0;
+    width: 200px;
+    text-align: center;
+    font-size: 0.9rem;
+    font-weight: normal;
+  }
+
+  &:hover {
+    transform: translateY(-0.5rem);
+  }
+}
+
+.image-container {
+  position: relative;
+  width: 100%;
+  margin: auto;
+}
+
+.image-distance {
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  background-color: rgba(255, 255, 210, 0.8);
+  border-radius: 2px;
+  border-style: solid;
+  border-width: 1px;
+  padding-left: 3px;
+  padding-right: 3px;
+}
+
+
+$semi-transparent-white: rgba(255, 255, 255, 0.92);
+
+.popover {
+  font-weight: normal;
+  background-color: $semi-transparent-white;
+
+  .popover-body {
+    padding-bottom: 0.6rem;
+  }
+}
+
+.svm-popover {
+  min-width: 25rem;
+}
+
+.knn-popover {
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
+
+  .dropzone {
+    width: 100%;
+    cursor: pointer;
+
+    @extend .alert-secondary;
+    border-style: dashed;
+    border-width: 3px;
+    border-radius: 5px;
+    text-align: center;
+    padding: 0.5rem;
+  }
+
+
+  .removable-image {
+    position: relative;
+
+    img {
+      width: 100%;
+    }
+
+    .remove-icon {
+      cursor: pointer;
+      position: absolute;
+      top: 7px;
+      right: 7px;
+      border-radius: 9px;
+      color: $semi-transparent-white;
+    }
+  }
+}
+
+.caption-search-popover, .knn-popover, .model-ranking-popover {
+  min-width: 18rem;
+  max-width: 18rem;
+}
+
+.rc-slider-track {
+  background-color: $primary;
+}
+
+.rc-slider-handle, .rc-slider-dot-active {
+  border-color: $primary !important;
+  box-shadow: none !important;
+}
+
+.text-monospace {
+  letter-spacing: -1px;
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+}
+
+.btn-light:disabled {
+  border: 1px solid mix($border-color, $white, 50%);
+}
+
+.rbt-token {
+  &.POSITIVE {
+    @extend .alert-success;
+    &.rbt-token-active {
+      background-color: $success;
+      color: white;
+    }
+  }
+
+  &.NEGATIVE {
+    background-color: #ffe7e8;
+    color: #ff0500;
+    text-decoration: line-through;
+    &.rbt-token-active {
+      background-color: #ff0500;
+      color: white;
+    }
+  }
+
+  &.HARD_NEGATIVE {
+    background-color: #fce4f3;
+    color: #ec5ab5;
+    text-decoration: line-through;
+    &.rbt-token-active {
+      background-color: #ec5ab5;
+      color: white;
+    }
+  }
+
+  &.UNSURE {
+    @extend .alert-info;
+    &.rbt-token-active {
+      background-color: $info;
+      color: white;
+    }
+
+    &:after {
+      content: "?";
+    }
+  }
+
+  &.ALL {
+    @extend .alert-dark;
+  }
+
+  &.CUSTOM {
+    color: #007bff;
+    &.rbt-token-active {
+      background-color: #007bff;
+      color: white;
+    }
+  }
+}
+
+.page-item.disabled {
+  cursor: not-allowed;
+}
+
+#dnn-controls-dropdown .form-group {
+    margin: 0 5px 0 5px;
+}
+
+#dnn-controls-dropdown .form-group label {
+    margin: 0 5px 0 5px;
+}
+
+#dnn-controls-dropdown .form-group label.custom-control-label:before {
+    top: 0px;
+}
+
+#dnn-controls-dropdown .form-group label.custom-control-label:after {
+    top: 0.25rem;
+}
+
+.pt-25 {
+  padding-top: 1rem !important;
+}
+
+.p-25 {
+  padding: 1rem !important;
+}
+
+.rbt-aux .rbt-close {
+  margin-top: 2px;
+}
+
+.rbt-token .rbt-token-remove-button {
+  top: 0;
+}

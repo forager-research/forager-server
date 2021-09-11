@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "forager_backend"
+version = "0.0.2-2"
+description = ""
+authors = ["Forager Research <faitpoms@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = ">=3.7"
+Django = "==3.1.1"
+Pillow = "*"
+django-cors-headers = "*"
+djangorestframework = "*"
+uvicorn = "*"
+psycopg2-binary = "*"
+numpy = "*"
+django-sslserver = "^0.22"
+pycocotools = "^2.0.2"
+expiringdict = "*"
+#google-cloud-storage = "^1.33.0"
+requests = "^2.26.0"
+
+[tool.poetry.dev-dependencies]
+responses = "^0.13.4"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
