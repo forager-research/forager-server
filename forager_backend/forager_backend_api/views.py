@@ -613,6 +613,7 @@ def get_results(request, dataset_name):
     return JsonResponse(
         {
             "paths": dataset_item_paths,
+            "thumbnails": dataset_item_paths,
             "identifiers": dataset_item_identifiers,
             "distances": distances,
             "clustering": clustering_data["clustering"],

@@ -1,0 +1,11 @@
+backoff
+flask
+numpy
+psutil
+PyYAML
+requests
+torch
+torchvision
+tensorboard
+sklearn
+scipy

@@ -1,0 +1,12 @@
+-f https://download.pytorch.org/whl/torch_stable.html
+torch==1.7.1+cpu
+torchvision==0.8.2+cpu
+aiohttp[speedups]
+numpy
+sanic==20.12.3
+uvicorn
+sanic_compress
+ftfy
+regex
+tqdm
+git+https://github.com/openai/CLIP.git

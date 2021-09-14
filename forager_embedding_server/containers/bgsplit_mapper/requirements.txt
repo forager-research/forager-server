@@ -1,0 +1,12 @@
+torch
+torchvision
+Pillow
+aiohttp[speedups]
+numpy
+sanic==20.12.3
+uvicorn
+sanic_compress
+backoff
+requests
+PyYAML
+sklearn

@@ -1,0 +1,1 @@
+CLIP_MODEL = "ViT-B-32.pt"

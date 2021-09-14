@@ -1,0 +1,12 @@
+-f https://dl.fbaipublicfiles.com/detectron2/wheels/index.html
+-f https://download.pytorch.org/whl/torch_stable.html
+torch==1.4.0+cpu
+torchvision==0.5.0+cpu
+pycocotools
+detectron2==0.1.1+cpu
+Pillow
+aiohttp[speedups]
+numpy
+sanic==20.12.3
+uvicorn
+sanic_compress

@@ -1,0 +1,8 @@
+aiohttp[speedups]
+faiss-cpu
+numpy
+PyYAML
+scikit-learn
+sanic
+uvicorn
+sanic_compress
