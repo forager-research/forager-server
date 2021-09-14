@@ -26,7 +26,7 @@ Forager build requires:
 
 To build Forager:
 ```bash
-git clone https://github.com/forager-research/forager-server.git
+git clone --recurse-submodules https://github.com/forager-research/forager-server.git
 cd forager-server
 pip3 install build
 python3 -m build
