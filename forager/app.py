@@ -57,12 +57,21 @@ def run_server(q):
             sys.stdout = LoggerWriter(logger.debug)
             sys.stderr = LoggerWriter(logger.warning)
 
-        import forager_backend_api.migrations
+        try:
+            import forager_backend_api.migrations
+
+            migrations_path = os.path.dirname(
+                os.path.abspath(forager_backend_api.migrations.__file__)
+            )
+        except ModuleNotFoundError:
+            import forager_backend_api
+
+            migrations_path = os.path.join(
+                os.path.dirname(os.path.abspath(forager_backend_api.__file__)),
+                "migrations",
+            )
 
         # Clear old migrations and recreate
-        migrations_path = os.path.dirname(
-            os.path.abspath(forager_backend_api.migrations.__file__)
-        )
         shutil.rmtree(migrations_path, ignore_errors=True)
         os.makedirs(migrations_path)
         with open(os.path.join(migrations_path, "__init__.py"), "w") as f:
