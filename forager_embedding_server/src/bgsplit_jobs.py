@@ -12,15 +12,14 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 import aiohttp
+import forager_embedding_server.config as config
 import numpy as np
+from forager_embedding_server.utils import sha_encode
 from forager_knn import utils
 from forager_knn.clusters import TerraformModule
 from forager_knn.jobs import MapperSpec, MapReduceJob
 from forager_knn.reducers import Reducer
 from forager_knn.utils import JSONType
-
-import forager_embedding_server.config as config
-from forager_embedding_server.utils import sha_encode
 
 logger = logging.getLogger("index_server")
 

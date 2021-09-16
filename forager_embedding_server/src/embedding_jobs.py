@@ -1,27 +1,16 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
-import os
-import random
-import shutil
-import subprocess
 import time
 import traceback
-import urllib.parse
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, Optional
 
-import aiohttp
+import forager_embedding_server.models as models
 import forager_knn.utils as utils
 import numpy as np
+from forager_embedding_server.jobs_data import load_image_list
 from PIL import Image
-
-import forager_embedding_server.config as config
-import forager_embedding_server.models as models
-from forager_embedding_server.jobs_data import ImageList, load_image_list
 
 logger = logging.getLogger("index_server")
 

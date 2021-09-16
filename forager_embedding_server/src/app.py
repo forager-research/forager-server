@@ -1,46 +1,46 @@
 import asyncio
 import base64
-import functools
+import io
 import logging
 import math
 import operator
 import os
 import re
 import shutil
-import time
 import uuid
-from collections import defaultdict
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List
 
-import fastcluster
-import numpy as np
-import sanic.response as resp
-from dataclasses_json import dataclass_json
-from forager_knn import utils
-from sanic import Sanic
-from scipy.spatial.distance import cdist
-from sklearn import svm
-from sklearn.metrics import precision_score, recall_score
-
 import forager_embedding_server.log
 import forager_embedding_server.models as models
+import numpy as np
+import sanic.response as resp
 from forager_embedding_server.ais import ais_singleiter, get_fscore
 from forager_embedding_server.config import CONFIG
 from forager_embedding_server.embedding_jobs import EmbeddingInferenceJob
-from forager_embedding_server.jobs_data import (ImageList, load_embedding_set,
-                                                load_score_set)
-from forager_embedding_server.utils import CleanupDict, sha_encode
+from forager_embedding_server.jobs_data import (
+    ImageList,
+    QueryResult,
+    load_embedding_set,
+    load_score_set,
+)
+from forager_embedding_server.utils import CleanupDict
+from forager_knn import utils
+from PIL import Image
+from sanic import Sanic
+from sklearn import svm
+from sklearn.metrics import precision_score, recall_score
 
 BUILD_WITH_KUBE = False
 
 if BUILD_WITH_KUBE:
     from forager_knn.clusters import TerraformModule
 
-    from forager_embedding_server.bgsplit_jobs import (BGSplitInferenceJob,
-                                                       BGSplitTrainingJob,
-                                                       Trainer)
+    from forager_embedding_server.bgsplit_jobs import (
+        BGSplitInferenceJob,
+        BGSplitTrainingJob,
+        Trainer,
+    )
 
 # Create a logger for the server
 
@@ -236,7 +236,7 @@ else:
 
 @app.route("/start_bgsplit_job", methods=["POST"])
 async def start_bgsplit_job(request):
-    logger.info(f"Train request received")
+    logger.info("Train request received")
     # HACK(mihirg): sometimes we get empty identifiers (i.e., "") from the server that
     # would otherwise cause a crash here; we should probably figure out why this is, but
     # just filtering out for now.
@@ -475,9 +475,9 @@ async def bgsplit_inference_job_status(request):
 async def perform_clustering(request):
     identifiers = request.json["identifiers"]
     image_list_path = request.json["image_list_path"]
-    embedding_set_path = request.json["embedding_set_path"]
+    embeddings_path = request.json["embeddings_path"]
 
-    embedding_set = load_embedding_set(embedding_set_path, image_list_path)
+    embedding_set = load_embedding_set(embeddings_path, image_list_path)
     clustering = embedding_set.cluster_identifiers(identifiers)
     return resp.json({"clustering": clustering})
 
@@ -487,16 +487,20 @@ async def generate_embedding(request):
     identifier = request.json.get("identifier")
     if identifier:
         image_list_path = request.json["image_list_path"]
-        embedding_set_path = request.json["embedding_set_path"]
-        embedding_set = load_embedding_set(embedding_set_path, image_list_path)
+        embeddings_path = request.json["embeddings_path"]
+        embedding_set = load_embedding_set(embeddings_path, image_list_path)
         embedding = embedding_set.get_embeddings([identifier])[0]
     else:
         model = request.json["model"]
         image_data = re.sub("^data:image/.+;base64,", "", request.json["image_data"])
-        embedding = await utils.run_in_executor(
-            BUILTIN_MODELS[model].embed_image_bytes,
-            base64.b64decode(image_data),
-        )
+        with io.BytesIO(base64.b64decode(image_data)) as image_buffer:
+            image = Image.open(image_buffer)
+            embedding = (
+                await utils.run_in_executor(
+                    BUILTIN_MODELS[model].embed_images,
+                    [np.asarray(image)],
+                )
+            )[0]
     return resp.json({"embedding": utils.numpy_to_base64(embedding)})
 
 
@@ -504,7 +508,9 @@ async def generate_embedding(request):
 async def generate_text_embedding(request):
     text = request.json["text"]
     model = request.json["model"]
-    embedding = await utils.run_in_executor(BUILTIN_MODELS[model].embed_text, text)
+    embedding = (await utils.run_in_executor(BUILTIN_MODELS[model].embed_text, [text]))[
+        0
+    ]
     return resp.json({"embedding": utils.numpy_to_base64(embedding)})
 
 
@@ -514,11 +520,11 @@ async def query_knn(request):
     use_dot_product = request.json["use_dot_product"]
     use_full_image = request.json["use_full_image"]
     image_list_path = request.json["image_list_path"]
-    embedding_set_path = request.json["embedding_set_path"]
+    embeddings_path = request.json["embeddings_path"]
 
     assert use_full_image, "Spaital queries not supported yet"
 
-    embedding_set = load_embedding_set(embedding_set_path, image_list_path)
+    embedding_set = load_embedding_set(embeddings_path, image_list_path)
     query_vector = np.mean([utils.base64_to_numpy(e) for e in embeddings], axis=0)
     query_results = embedding_set.query_brute_force(
         query_vector, dot_product=use_dot_product
@@ -534,9 +540,9 @@ async def train_svm(request):
     pos_identifiers: List[str] = list(filter(bool, request.json["pos_identifiers"]))
     neg_identifiers: List[str] = list(filter(bool, request.json["neg_identifiers"]))
     image_list_path = request.json["image_list_path"]
-    embedding_set_path = request.json["embedding_set_path"]
+    embeddings_path = request.json["embeddings_path"]
 
-    embedding_set = load_embedding_set(embedding_set_path, image_list_path)
+    embedding_set = load_embedding_set(embeddings_path, image_list_path)
 
     # Get positive and negative image embeddings from local flat index
     pos_vectors = embedding_set.get_embeddings(pos_identifiers)
@@ -572,9 +578,9 @@ async def query_svm(request):
     score_max = float(request.json["score_max"])
     svm_vector = utils.base64_to_numpy(request.json["svm_vector"])
     image_list_path = request.json["image_list_path"]
-    embedding_set_path = request.json["embedding_set_path"]
+    embeddings_path = request.json["embeddings_path"]
 
-    embedding_set = load_embedding_set(embedding_set_path, image_list_path)
+    embedding_set = load_embedding_set(embeddings_path, image_list_path)
     query_results = embedding_set.query_brute_force(
         svm_vector, dot_product=True, min_d=score_min, max_d=score_max
     )
@@ -586,9 +592,9 @@ async def query_ranking(request):
     score_min = float(request.json["score_min"])
     score_max = float(request.json["score_max"])
     image_list_path = request.json["image_list_path"]
-    score_set_path = request.json["score_set_path"]
+    scores_path = request.json["scores_path"]
 
-    score_set = load_score_set(score_set_path, image_list_path)
+    score_set = load_score_set(scores_path, image_list_path)
     query_results = score_set.rank_brute_force(score_min, score_max)
     return resp.json({"results": [r.to_dict() for r in query_results]})
 
@@ -605,12 +611,12 @@ async def query_metrics(request):
     labels = request.json["labels"]  # type: List[bool]
     weights = request.json["weights"]  # type: List[float]
     image_list_path = request.json["image_list_path"]  # type: str
-    score_set_path = request.json["score_set_path"]  # type: str
+    scores_path = request.json["scores_path"]  # type: str
 
     assert len(identifiers) == len(labels) == len(weights)
     num_labeled = len(identifiers)
 
-    score_set = load_score_set(score_set_path, image_list_path)
+    score_set = load_score_set(scores_path, image_list_path)
 
     prob_pos = score_set.get_scores(identifiers)
     y_pred = prob_pos > CONFIG.DNN_SCORE_CLASSIFICATION_THRESHOLD
@@ -665,11 +671,11 @@ async def query_active_validation(request):
     labels = request.json["labels"]  # type: List[bool]
     current_f1 = float(request.json["current_f1"])
     image_list_path = request.json["image_list_path"]
-    score_set_path = request.json["score_set_path"]
+    scores_path = request.json["scores_path"]
 
     assert len(identifiers) == len(labels)
 
-    score_set = load_score_set(score_set_path, image_list_path)
+    score_set = load_score_set(scores_path, image_list_path)
 
     all_val_inds = score_set.images.get_inds_for_split("val")
     all_val_identifiers = score_set.images.get_identifiers(all_val_inds)
