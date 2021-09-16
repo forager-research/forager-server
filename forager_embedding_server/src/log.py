@@ -40,6 +40,8 @@ LOGGING = {
     "root": {"handlers": [], "level": "DEBUG"},
     "loggers": {
         "sanic.access": {"handlers": [], "propagate": False},
+        "sanic.error": {"handlers": [], "propagate": True},
+        "sanic.root": {"handlers": [], "propagate": True},
         "forager_embedding_server": {"handlers": [], "propagate": True},
     },
 }

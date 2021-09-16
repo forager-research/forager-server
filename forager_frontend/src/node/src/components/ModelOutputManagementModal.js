@@ -49,8 +49,7 @@ const ModelOutputManagementModal = ({
   // TODO: store with redux
   const [modelOutputs, setModelOutputs] = useState([]);
 
-  const kOrderBy = fromPairs([["name", 0], ["timestamp", 1]]);
-  const [orderBy, setOrderBy] = useState(kOrderBy.name);
+  const [orderBy, setOrderBy] = useState("name");
   const [orderAscending, setOrderAscending] = useState(true);
 
   const [confirmIsOpen, setConfirmIsOpen] = useState(false);
@@ -61,12 +60,11 @@ const ModelOutputManagementModal = ({
   const sortModelOutputs = (arr) => {
     const copy = arr.slice(0);
     const m = orderAscending ? 1 : -1;
-    if (orderBy === kOrderBy.name) {
+    if (orderBy === "name") {
       copy.sort((a, b) => m * (a.modelOutput.name.toLowerCase() < b.modelOutput.name.toLowerCase() ? -1 : 1));
-    } else if (orderBy === kOrderBy.timestamp) {
-      copy.sort((a, b) => m * (a.modelOutput.timestamp < b.modelOutput.timestamp ? -1 : 1));
+    } else {
+      copy.sort((a, b) => m * (a.modelOutput[orderBy] < b.modelOutput[orderBy] ? -1 : 1));
     }
-
     return copy;
   };
 
@@ -150,6 +148,12 @@ const ModelOutputManagementModal = ({
                 <ReactTimeAgo date={obj.modelOutput.timestamp} timeStyle="mini"/> ago
               </td>
               <td>
+                {obj.modelOutput.has_embeddings && <span>&#x2714;</span>}
+              </td>
+              <td>
+                {obj.modelOutput.has_scores && <span>&#x2714;</span>}
+              </td>
+              <td>
                 <Button close disabled={isReadOnly} onClick={(e) => {
                     setConfirmModel(obj.modelOutput.name);
                     setConfirmModelIdx(i);
@@ -181,16 +185,17 @@ const ModelOutputManagementModal = ({
           <Table hover borderless size="sm">
             <thead>
               <tr>
-                <th style={{cursor: "pointer"}} onClick={() => changeOrdering(kOrderBy.name)}>
-                  Model Output Name <FontAwesomeIcon icon={
-                    orderBy !== kOrderBy.name ? faSort : (orderAscending ? faSortUp : faSortDown)
-                  } />
-                </th>
-                <th style={{cursor: "pointer"}} onClick={() => changeOrdering(kOrderBy.timestamp)}>
-                  Timestamp <FontAwesomeIcon icon={
-                    orderBy !== kOrderBy.timestamp ? faSort : (orderAscending ? faSortUp : faSortDown)
-                  } />
-                </th>
+                {[["name", "Name"],
+                  ["timestamp", "Created"],
+                  ["has_embeddings", "Has Embeddings?"],
+                  ["has_scores", "Has Scores?"]
+                ].map(([accessor, name]) => (
+                 <th style={{cursor: "pointer"}} onClick={() => changeOrdering(accessor)}>
+                    {name} <FontAwesomeIcon icon={
+                      orderBy !== accessor ? faSort : (orderAscending ? faSortUp : faSortDown)
+                    } />
+                  </th>
+                 ))}
               </tr>
             </thead>
             {tableBodyFromModelOutputs()}

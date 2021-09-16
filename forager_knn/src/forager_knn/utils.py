@@ -1,26 +1,15 @@
 import asyncio
 import base64
 import concurrent
-from dataclasses import dataclass, field
 import functools
 import io
 import textwrap
 import traceback
+from dataclasses import dataclass, field
+from typing import (Any, AsyncGenerator, AsyncIterable, Coroutine, Dict,
+                    Iterable, Iterator, List, Set, Union)
 
 import aiohttp
-
-from typing import (
-    Any,
-    AsyncGenerator,
-    AsyncIterable,
-    Coroutine,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
-    Set,
-    Union,
-)
 
 JSONType = Union[str, int, float, bool, None, Dict[str, Any], List[Any]]
 
@@ -123,7 +112,7 @@ async def as_completed_from_futures(
 
 async def run_in_executor(f, *args, executor: concurrent.futures.Executor = None):
     loop = asyncio.get_running_loop()
-    await loop.run_in_executor(executor, f, *args)
+    return await loop.run_in_executor(executor, f, *args)
 
 
 def unasync(coro):

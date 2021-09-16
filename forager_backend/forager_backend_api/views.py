@@ -529,13 +529,13 @@ def process_image_query_results(request, dataset, query_response):
     filtered_pks = filtered_images(request, dataset)
     # TODO(mihirg): Eliminate this database call by directly returning pks from backend
     dataset_items = DatasetItem.objects.filter(pk__in=filtered_pks)
-    dataset_items_by_path = {di.path: di for di in dataset_items}
+    dataset_items_by_identifier = {di.identifier: di for di in dataset_items}
 
     distances = []
     ordered_pks = []
     for r in query_response["results"]:
-        if r["label"] in dataset_items_by_path:
-            ordered_pks.append(dataset_items_by_path[r["label"]].pk)
+        if r["identifier"] in dataset_items_by_identifier:
+            ordered_pks.append(dataset_items_by_identifier[r["identifier"]].pk)
             distances.append(r["dist"])
     return dict(
         pks=ordered_pks,
@@ -600,7 +600,7 @@ def get_results(request, dataset_name):
         pk=clustering_model_output_id, embeddings_path__isnull=False
     )
     params = {
-        "embedding_set_path": clustering_model_output.embeddings_path,
+        "embeddings_path": clustering_model_output.embeddings_path,
         "image_list_path": clustering_model_output.image_list_path,
         "identifiers": internal_identifiers,
     }
@@ -633,9 +633,16 @@ def keep_alive(request):
 @csrf_exempt
 def generate_embedding(request):
     payload = json.loads(request.body)
-    image_id = payload.get("image_id")
-    if image_id:
-        payload["identifier"] = DatasetItem.objects.get(pk=image_id).identifier
+    if "image_id" in payload:
+        payload["identifier"] = DatasetItem.objects.get(
+            pk=payload["image_id"]
+        ).identifier
+    if "model_output_id" in payload:
+        model_output = ModelOutput.objects.get(
+            pk=payload["model_output_id"], embeddings_path__isnull=False
+        )
+        payload["embeddings_path"] = model_output.embeddings_path
+        payload["image_list_path"] = model_output.image_list_path
 
     r = requests.post(
         settings.EMBEDDING_SERVER_ADDRESS + "/generate_embedding",
@@ -764,7 +771,7 @@ def train_svm(request, dataset_name):
 @csrf_exempt
 def query_svm(request, dataset_name):
     payload = json.loads(request.body)
-    model_output_id = request.GET["model_output_id"]
+    model_output_id = payload["model_output_id"]
     svm_vector = payload["svm_vector"]
     score_min = float(payload.get("score_min", 0.0))
     score_max = float(payload.get("score_max", 1.0))
@@ -802,7 +809,7 @@ def query_svm(request, dataset_name):
 @csrf_exempt
 def query_ranking(request, dataset_name):
     payload = json.loads(request.body)
-    model_output_id = request.GET["model_output_id"]
+    model_output_id = payload["model_output_id"]
     score_min = float(payload.get("score_min", 0.0))
     score_max = float(payload.get("score_max", 1.0))
 
@@ -1353,7 +1360,7 @@ def create_dataset(request):
             time.sleep(3)
             job_ids_left = next_jobs
 
-    except requests.exceptions.RequestException as e:  # This is the correct syntax
+    except requests.exceptions.RequestException:  # This is the correct syntax
         dataset.delete()
         return JsonResponse(
             {"status": "failure", "reason": "Failed to create embeddings for dataset."},

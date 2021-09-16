@@ -180,7 +180,7 @@ const ModelManagementModal = ({
                 <ReactTimeAgo date={obj.model.latest.timestamp} timeStyle="mini"/> ago
               </td>
               <td>
-                {obj.model.with_output != null ? 'Yes' : 'No'}
+                {obj.model.with_output != null && <span>&#x2714;</span>}
               </td>
               <td>
                 <Button close disabled={isReadOnly} onClick={(e) => {

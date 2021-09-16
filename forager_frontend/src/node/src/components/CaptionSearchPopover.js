@@ -20,7 +20,7 @@ const CaptionSearchPopover = ({ canBeOpen, text, setText, textEmbedding, setText
 
   const generateEmbedding = async () => {
     const url = new URL(endpoints.generateTextEmbedding);
-    const body = { text };
+    const body = { text, model: 'clip' };
 
     const res = await fetch(url, {
       method: "POST",

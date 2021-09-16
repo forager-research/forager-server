@@ -254,8 +254,8 @@ function MainHeader(props) {
           <span className="mr-4" onClick={toggleTagManagement} style={{cursor: "pointer"}}>
             Manage Tags
           </span>
-          <span className="mr-4" onClick={toggleModelManagement} style={{cursor: "pointer"}}>
-            Manage Models
+          <span className="mr-4" onClick={toggleModelOutputManagement} style={{cursor: "pointer"}}>
+            Manage Model Outputs
           </span>
           <span>
             {username ?
@@ -304,12 +304,6 @@ function ClusteringControls(props) {
   let modelInfo = props.modelInfo;
   let modelOutputInfo = props.modelOutputInfo;
 
-  let clusteringModels = modelOutputInfo.map(m => m.name);
-  useEffect(() => {
-    if (clusteringModel === null && modelOutputInfo.length > 0) {
-      setClusteringModel(modelOutputInfo[0]["name"]);
-    }
-  }, [modelOutputInfo])
   return (
     <div className="d-flex flex-row align-items-center">
       <div className="custom-switch custom-control mr-4">
@@ -335,7 +329,7 @@ function ClusteringControls(props) {
         id="clustering-feature-bar"
         className="clustering-feature-bar mr-2"
         placeholder="Features to cluster by"
-        features={clusteringModels}
+        features={modelOutputInfo.filter(m => m.has_embeddings)}
         selected={clusteringModel}
         setSelected={setClusteringModel}
       />
@@ -484,6 +478,7 @@ function OrderingModeSelector(p) {
   let svmModel = p.svmModel
   let setSvmModel = p.setSvmModel
   let modelInfo = p.modelInfo;
+  let modelOutputInfo = p.modelOutputInfo;
   let svmAugmentNegs = p.svmAugmentNegs;
   let setSvmAugmentNegs = p.setSvmAugmentNegs;
   let svmAugmentIncludeTags = p.svmAugmentIncludeTags;
@@ -544,7 +539,7 @@ function OrderingModeSelector(p) {
             id="svm-model-bar"
             className="mb-2"
             placeholder="Model features to use (optional)"
-            features={modelInfo.filter(m => m.with_output)}
+            features={modelOutputInfo.filter(m => m.has_embeddings)}
             disabled={svmIsTraining}
             selected={svmModel}
             setSelected={selected => {
@@ -601,7 +596,7 @@ function OrderingModeSelector(p) {
             onClick={() => p.setSvmIsTraining(true)}
             disabled={svmPosTags.length === 0 ||
                       (svmNegTags.length === 0 && !svmAugmentNegs) ||
-                      svmIsTraining}
+                      svmIsTraining || svmModel === null}
             className="mt-2 mb-1 w-100"
           >Train</Button>
           {!!(trainedSvmData) && <div className="mt-1">
@@ -640,7 +635,7 @@ function OrderingModeSelector(p) {
                                  canBeOpen={!clusterIsOpen}
     />}
     {orderingMode === "dnn" && <ModelRankingPopover
-                                 features={modelInfo.filter(m => m.with_output)}
+                                 modelOutputInfo={modelOutputInfo}
                                  rankingModel={rankingModel}
                                  setRankingModel={setRankingModel}
                                  canBeOpen={!clusterIsOpen}
@@ -877,6 +872,8 @@ const App = () => {
     const url = new URL(endpoints.generateEmbedding);
     const body = {
       index_id: datasetInfo.index_id,
+      model: "resnet",
+      model_output_id: modelOutputInfo.find(m => m.name === "resnet").id,
       ...req,
     };
 
@@ -978,8 +975,8 @@ const App = () => {
       augment_negs: svmAugmentNegs,
       include: svmAugmentIncludeTags.map(t => `${t.category}:${t.value}`),
       exclude: svmAugmentExcludeTags.map(t => `${t.category}:${t.value}`),
+      model_output_id: svmModel.id,
     }
-    if (svmModel) body.model = svmModel.with_output.model_id;
     url.search = new URLSearchParams(body).toString();
     const svmData = await fetch(url, {
       method: "GET",
@@ -1008,7 +1005,6 @@ const App = () => {
 
     if (isFirstLoad.current) {
       body.num = PAGE_SIZE;
-
     }
 
     if (orderingMode === "id" || orderingMode === "random") {
@@ -1017,18 +1013,19 @@ const App = () => {
     } else if (orderingMode === "knn") {
       url = new URL(`${endpoints.queryKnn}/${datasetName}`);
       body.embeddings = Object.values(knnImages).map(i => i.embedding);
+      body.model_output_id = modelOutputInfo.find(m => m.name === "resnet").id;
       body.use_full_image = !knnUseSpatial;
     } else if (orderingMode === "svm") {
       url = new URL(`${endpoints.querySvm}/${datasetName}`);
       body.svm_vector = trainedSvmData.svm_vector;
-      if (svmModel) body.model = svmModel.with_output.model_id;
+      body.model_output_id = svmModel.id;
     } else if (orderingMode === "dnn") {
       url = new URL(`${endpoints.queryRanking}/${datasetName}`);
-      body.model = rankingModel.with_output.model_id;
+      body.model_output_id = rankingModel.id;
     } else if (orderingMode === "clip") {
       url = new URL(`${endpoints.queryKnn}/${datasetName}`);
       body.embeddings = [captionQueryEmbedding];
-      body.model = "clip";
+      body.model_output_id = modelOutputInfo.find(m => m.name === "clip").id;
       body.use_dot_product = true;
     } else {
       console.error(`Query type (${orderingMode}) not implemented`);
@@ -1057,16 +1054,9 @@ const App = () => {
       return;
     };
 
-    let modelOutputId = modelOutputInfo[0]["id"];
-    for (const m of modelOutputInfo) {
-      if (m["name"] == clusteringModel) {
-        modelOutputId = m["id"];
-      }
-    }
-
     let url = new URL(`${endpoints.getResults}/${datasetName}`);
     let params =  {
-      clustering_model_output_id: modelOutputId,
+      clustering_model_output_id: clusteringModel.id,
       result_set_id: queryResultSet.id,
       offset: page * PAGE_SIZE,
       num: PAGE_SIZE,
@@ -1258,6 +1248,7 @@ const App = () => {
     svmModel: svmModel,
     setSvmModel: setSvmModel,
     modelInfo: modelInfo,
+    modelOutputInfo: modelOutputInfo,
     svmAugmentNegs: svmAugmentNegs,
     setSvmAugmentNegs: setSvmAugmentNegs,
     svmAugmentIncludeTags: svmAugmentIncludeTags,

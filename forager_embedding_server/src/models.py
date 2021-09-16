@@ -1,4 +1,3 @@
-import io
 from typing import List, Optional, Tuple
 
 import clip
@@ -6,12 +5,9 @@ import numpy as np
 import torch
 import torchvision.models.resnet
 import torchvision.transforms
+from forager_embedding_server.config import CONFIG
 from PIL import Image
 
-from forager_embedding_server.config import CONFIG
-from forager_embedding_server.utils import load_remote_file
-
-torch.set_grad_enabled(False)
 torch.set_num_threads(1)
 
 
@@ -35,12 +31,14 @@ class CLIP(EmbeddingModel):
     def output_dim(self):
         return 512
 
+    @torch.no_grad()
     def embed_text(self, text, *args, **kwargs):
         text = clip.tokenize(text)
         text_features = self.model.encode_text(text)
         text_features /= text_features.norm(dim=-1, keepdim=True)
         return text_features.numpy()
 
+    @torch.no_grad()
     def embed_images(self, images, *args, **kwargs):
         preprocessed_images = torch.stack(
             [self.preprocess(Image.fromarray(img)) for img in images]
@@ -91,6 +89,7 @@ class ResNet(EmbeddingModel):
     def output_dim(self, layer: str = "res4"):
         return {"res4": 1024, "res5": 2048, "linear": 1000}[layer]
 
+    @torch.no_grad()
     def embed_images(
         self,
         images,
@@ -124,8 +123,8 @@ class ResNet(EmbeddingModel):
             converted_images.append(image)
 
         # Input: NCHW
-        # Output: {'res4': CHW, 'res5': CHW} where N = 1
+        # Output: {'res4': NCHW, 'res5': NCHW}
         inputs = torch.stack(converted_images, dim=0)
         output_dict = self.model(inputs)
 
-        return torch.mean(output_dict[layer], dim=[2, 3]).detach().numpy()
+        return torch.mean(output_dict[layer], dim=[2, 3]).numpy()

@@ -10,9 +10,9 @@ from typing import Dict, Iterable, List, Optional, Tuple
 import fastcluster
 import numpy as np
 from dataclasses_json import dataclass_json
-
 from forager_embedding_server.config import CONFIG
 from forager_embedding_server.utils import sha_encode
+from scipy.spatial.distance import cdist
 
 
 @functools.lru_cache(maxsize=32)
