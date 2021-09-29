@@ -5,7 +5,7 @@ import os
 import sys
 
 name = "forager-server"
-version = "0.0.1"
+version = "0.0.2-6"
 
 if sys.version_info < (3, 8):
     error = (
