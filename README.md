@@ -24,7 +24,17 @@ Forager build requires:
 
 ### Development setup
 
-To build Forager:
+To build Forager for development:
+```bash
+git clone --recurse-submodules https://github.com/forager-research/forager-server.git
+cd forager-server
+pip3 install -e .
+```
+
+Then run with `forager-server dev`.
+
+
+To build Forager for release:
 ```bash
 git clone --recurse-submodules https://github.com/forager-research/forager-server.git
 cd forager-server

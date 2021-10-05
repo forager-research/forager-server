@@ -27,6 +27,7 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 from forager.buildutils import (build_frontend, find_package_data,
                                 find_package_deps, find_package_dirs,
                                 find_packages)
+from forager.develop import forager_develop
 
 setup_args = dict(
     name=name,
@@ -88,6 +89,7 @@ class no_bdist_egg(bdist_egg):
 setup_args["cmdclass"] = {
     "sdist": build_frontend(sdist),
     "bdist_egg": bdist_egg if "bdist_egg" in sys.argv else no_bdist_egg,
+    "develop": forager_develop,
 }
 
 try:

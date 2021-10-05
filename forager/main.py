@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import List, Tuple
 
 
-def run_cmd():
+def run_cmd(args):
     from forager.app import ForagerApp
 
     app = ForagerApp()
@@ -21,8 +21,12 @@ def run_cmd():
     app.join()
 
 
-def dev_cmd():
-    pass
+def dev_cmd(args):
+    from forager.app import ForagerApp
+
+    app = ForagerApp(dev=True)
+    app.run()
+    app.join()
 
 
 def main():
@@ -35,7 +39,7 @@ def main():
 
     args = parser.parse_args()
     if args.subparser_name is None:
-        run_cmd()
+        run_cmd(args)
     else:
         args.func(args)
 
