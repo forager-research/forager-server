@@ -18,6 +18,24 @@ html, body, #root, .main {
   height: 100%;
 }
 
+.main {
+  width: 100%;
+  display: flex;
+}
+
+.main {
+  width: 100%;
+  display: flex;
+}
+
+.main-panel {
+  flex-grow: 1;
+}
+
+.model-sidebar {
+  width: 300px;
+}
+
 .loading,
 .loading input,
 .loading textarea,

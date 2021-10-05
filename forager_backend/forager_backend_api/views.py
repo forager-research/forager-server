@@ -57,8 +57,10 @@ def start_cluster(request):
 
 @api_view(["GET"])
 @csrf_exempt
-def get_cluster_status(request, cluster_id):
-    params = {"cluster_id": cluster_id}
+def get_cluster_status(request, cluster_id=None):
+    params = {}
+    if cluster_id:
+        params["cluster_id":cluster_id]
     r = requests.get(
         settings.EMBEDDING_SERVER_ADDRESS + "/cluster_status", params=params
     )
@@ -68,17 +70,15 @@ def get_cluster_status(request, cluster_id):
 
 @api_view(["POST"])
 @csrf_exempt
-def stop_cluster(request, cluster_id):
-    params = {"cluster_id": cluster_id}
-    requests.post(
+def stop_cluster(request):
+    payload = json.loads(request.body)
+    params = dict(cluster_id=payload["cluster_id"])
+    r = requests.post(
         settings.EMBEDDING_SERVER_ADDRESS + "/stop_cluster",
         json=params,
     )
-    return JsonResponse(
-        {
-            "status": "success",
-        }
-    )
+    response_data = r.json()
+    return JsonResponse(response_data)
 
 
 #

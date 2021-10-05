@@ -16,31 +16,20 @@ import forager_embedding_server.models as models
 import numpy as np
 import sanic.response as resp
 from forager_embedding_server.ais import ais_singleiter, get_fscore
+from forager_embedding_server.bgsplit_jobs import (BGSplitInferenceJob,
+                                                   BGSplitTrainingJob, Trainer)
 from forager_embedding_server.config import CONFIG
 from forager_embedding_server.embedding_jobs import EmbeddingInferenceJob
-from forager_embedding_server.jobs_data import (
-    ImageList,
-    QueryResult,
-    load_embedding_set,
-    load_score_set,
-)
+from forager_embedding_server.jobs_data import (ImageList, QueryResult,
+                                                load_embedding_set,
+                                                load_score_set)
 from forager_embedding_server.utils import CleanupDict
 from forager_knn import utils
+from forager_knn.clusters import TerraformModule
 from PIL import Image
 from sanic import Sanic
 from sklearn import svm
 from sklearn.metrics import precision_score, recall_score
-
-BUILD_WITH_KUBE = False
-
-if BUILD_WITH_KUBE:
-    from forager_knn.clusters import TerraformModule
-
-    from forager_embedding_server.bgsplit_jobs import (
-        BGSplitInferenceJob,
-        BGSplitTrainingJob,
-        Trainer,
-    )
 
 # Create a logger for the server
 
@@ -179,19 +168,13 @@ async def _stop_cluster(cluster):
 
 
 # TODO(mihirg): Automatically clean up inactive clusters
-if BUILD_WITH_KUBE:
-    current_clusters: CleanupDict[str, TerraformModule] = CleanupDict(
-        _stop_cluster, app.add_task, CONFIG.CLUSTER.CLEANUP_TIME
-    )
-else:
-    current_clusters = {}
+current_clusters: CleanupDict[str, TerraformModule] = CleanupDict(
+    _stop_cluster, app.add_task, CONFIG.CLUSTER.CLEANUP_TIME
+)
 
 
 @app.route("/start_cluster", methods=["POST"])
 async def start_cluster(request):
-    if not BUILD_WITH_KUBE:
-        return resp.json({"success": False}, status=400)
-
     cluster = TerraformModule(
         CONFIG.CLUSTER.TERRAFORM_MODULE_PATH, copy=not CONFIG.CLUSTER.REUSE_EXISTING
     )
@@ -203,14 +186,32 @@ async def start_cluster(request):
 
 @app.route("/cluster_status", methods=["GET"])
 async def cluster_status(request):
-    cluster_id = request.args["cluster_id"][0]
-    cluster = current_clusters.get(cluster_id)
-    has_cluster = cluster is not None
+    if "cluster_id" in request.args:
+        cluster_id = request.args["cluster_id"][0]
+        cluster = current_clusters.get(cluster_id)
+        has_cluster = cluster is not None
+        status = {
+            "has_cluster": has_cluster,
+            "ready": has_cluster and cluster.ready.is_set(),
+        }
+    else:
+        status = {"clusters": []}
+        for cluster_id, cluster in current_clusters.items():
+            state = "creating"
+            if cluster.ready.is_set():
+                state = "ready"
+            if cluster.destroying.is_set():
+                state = "destroying"
+            status["clusters"].append(
+                {
+                    "id": cluster_id,
+                    "name": "tbd",
+                    "created_at": "N/A",
+                    "created_by": "N/A",
+                    "status": state,
+                }
+            )
 
-    status = {
-        "has_cluster": has_cluster,
-        "ready": has_cluster and cluster.ready.is_set(),
-    }
     return resp.json(status)
 
 
@@ -226,12 +227,9 @@ async def stop_cluster(request):
 # Note(mihirg): These functions are out of date as of 6/25 and need to be fixed/removed.
 #
 
-if BUILD_WITH_KUBE:
-    current_models: CleanupDict[str, BGSplitTrainingJob] = CleanupDict(
-        lambda job: job.stop()
-    )
-else:
-    current_models = {}
+current_models: CleanupDict[str, BGSplitTrainingJob] = CleanupDict(
+    lambda job: job.stop()
+)
 
 
 @app.route("/start_bgsplit_job", methods=["POST"])
@@ -386,12 +384,9 @@ async def bgsplit_job_status(request):
     return resp.json(status)
 
 
-if BUILD_WITH_KUBE:
-    current_model_inference_jobs: CleanupDict[str, BGSplitInferenceJob] = CleanupDict(
-        lambda job: job.stop()
-    )
-else:
-    current_model_inference_jobs = {}
+current_model_inference_jobs: CleanupDict[str, BGSplitInferenceJob] = CleanupDict(
+    lambda job: job.stop()
+)
 
 
 @app.route("/start_bgsplit_inference_job", methods=["POST"])
@@ -748,10 +743,9 @@ async def cleanup(app, loop):
 
 @utils.log_exception_from_coro_but_return_none
 async def _cleanup_clusters():
-    if BUILD_WITH_KUBE:
-        n = len(current_clusters)
-        await current_clusters.clear_async()
-        print(f"- killed {n} clusters")
+    n = len(current_clusters)
+    await current_clusters.clear_async()
+    print(f"- killed {n} clusters")
 
 
 if __name__ == "__main__":

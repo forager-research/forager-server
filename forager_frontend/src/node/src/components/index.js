@@ -16,3 +16,5 @@ export { default as BulkTagModal } from "./BulkTagModal.js";
 export { default as ValidatePanel } from "./ValidatePanel.js";
 export { default as LabelPanel } from "./LabelPanel.js";
 export { default as TrainPanel } from "./TrainPanel.js";
+export { default as ModelSidebar } from "./ModelSidebar.tsx";
+export { default as ClusterConnectionModal } from "./ClusterConnectionModal.tsx";

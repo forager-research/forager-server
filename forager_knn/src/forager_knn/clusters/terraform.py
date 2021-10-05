@@ -1,10 +1,10 @@
 import asyncio
 import json
+import subprocess
+import uuid
 from pathlib import Path
 from shutil import copytree
-import subprocess
 from tempfile import TemporaryDirectory
-import uuid
 
 
 class TerraformModule:
@@ -19,6 +19,7 @@ class TerraformModule:
 
         self._output = None
         self.ready = asyncio.Event()
+        self.destroying = asyncio.Event()
 
     async def apply(self):
         proc = await asyncio.create_subprocess_exec("terraform", "init", cwd=self.dir)
@@ -44,6 +45,7 @@ class TerraformModule:
         return self._output
 
     async def destroy(self):
+        self.destroying.set()
         self._output = None
         proc = await asyncio.create_subprocess_exec(
             "terraform", "refresh", cwd=self.dir

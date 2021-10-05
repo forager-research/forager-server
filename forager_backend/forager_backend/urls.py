@@ -21,11 +21,16 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/start_cluster", views.start_cluster, name="start_cluster"),
     path(
+        "api/cluster",
+        views.get_cluster_status,
+        name="get_cluster_status",
+    ),
+    path(
         "api/cluster/<slug:cluster_id>",
         views.get_cluster_status,
         name="get_cluster_status",
     ),
-    path("api/stop_cluster/<slug:cluster_id>", views.stop_cluster, name="stop_cluster"),
+    path("api/stop_cluster", views.stop_cluster, name="stop_cluster"),
     path("api/get_results/<slug:dataset_name>", views.get_results, name="get_results"),
     path("api/keep_alive", views.keep_alive, name="keep_alive"),
     path("api/generate_embedding", views.generate_embedding, name="generate_embedding"),

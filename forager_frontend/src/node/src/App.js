@@ -60,6 +60,7 @@ import {
   ValidatePanel,
   LabelPanel,
   TrainPanel,
+  ModelSidebar,
 } from "./components";
 
 var disjointSet = require("disjoint-set");
@@ -67,38 +68,41 @@ var disjointSet = require("disjoint-set");
 const PAGE_SIZE = 500;
 
 const splits = [
-  {id: "train", label: "Training set"},
-  {id: "val", label: "Validation set"},
+  { id: "train", label: "Training set" },
+  { id: "val", label: "Validation set" },
 ];
 
 const orderingModes = [
-  {id: "random", label: "Random order"},
-  {id: "id", label: "Dataset order"},
-  {id: "svm", label: "SVM"},
-  {id: "knn", label: "KNN"},
-  {id: "dnn", label: "Model ranking"},
-  {id: "clip", label: "Caption search"},
+  { id: "random", label: "Random order" },
+  { id: "id", label: "Dataset order" },
+  { id: "svm", label: "SVM" },
+  { id: "knn", label: "KNN" },
+  { id: "dnn", label: "Model ranking" },
+  { id: "clip", label: "Caption search" },
 ];
 
 const modes = [
-  {id: "explore", label: "Explore"},
-  {id: "label", label: "Label"},
-  {id: "train", label: "Train"},
-  {id: "validate", label: "Validate"},
+  { id: "explore", label: "Explore" },
+  { id: "label", label: "Label" },
 ];
 
-const endpoints = fromPairs(toPairs({
-  getDatasetInfo: "get_dataset_info",
-  getCategoryCounts: "get_category_counts",
-  getResults: "get_results",
-  trainSvm: "train_svm",
-  queryImages: "query_images",
-  querySvm: "query_svm",
-  queryKnn: "query_knn",
-  queryRanking: "query_ranking",
-  generateEmbedding: 'generate_embedding',
-  keepAlive: 'keep_alive',
-}).map(([name, endpoint]) => [name, `${process.env.REACT_APP_SERVER_URL}/api/${endpoint}`]));
+const endpoints = fromPairs(
+  toPairs({
+    getDatasetInfo: "get_dataset_info",
+    getCategoryCounts: "get_category_counts",
+    getResults: "get_results",
+    trainSvm: "train_svm",
+    queryImages: "query_images",
+    querySvm: "query_svm",
+    queryKnn: "query_knn",
+    queryRanking: "query_ranking",
+    generateEmbedding: "generate_embedding",
+    keepAlive: "keep_alive",
+  }).map(([name, endpoint]) => [
+    name,
+    `${process.env.REACT_APP_SERVER_URL}/api/${endpoint}`,
+  ])
+);
 
 const KEEP_ALIVE_INTERVAL = 60000; // ms
 
@@ -118,19 +122,27 @@ function MainHeader(props) {
   let setUsername = props.setUsername;
 
   const login = (e) => {
-    if (loginUsername !== undefined && loginPassword === "forager") setUsername(loginUsername.trim());
+    if (loginUsername !== undefined && loginPassword === "forager")
+      setUsername(loginUsername.trim());
     setLoginIsOpen(false);
     e.preventDefault();
-  }
+  };
 
   //
   // TAG MANAGEMENT MODAL
   //
   const [tagManagementIsOpen, setTagManagementIsOpen] = useState(false);
-  const toggleTagManagement = () => setTagManagementIsOpen(!tagManagementIsOpen);
+  const toggleTagManagement = () =>
+    setTagManagementIsOpen(!tagManagementIsOpen);
 
   const [modelManagementIsOpen, setModelManagementIsOpen] = useState(false);
-  const toggleModelManagement = () => setModelManagementIsOpen(!modelManagementIsOpen);
+  const toggleModelManagement = () =>
+    setModelManagementIsOpen(!modelManagementIsOpen);
+
+  const [modelOutputManagementIsOpen, setModelOutputManagementIsOpen] =
+    useState(false);
+  const toggleModelOutputManagement = () =>
+    setModelOutputManagementIsOpen(!modelOutputManagementIsOpen);
 
   const [popoverOpen, setPopoverOpen] = useState(false);
 
@@ -142,6 +154,9 @@ function MainHeader(props) {
 
   let modelInfo = props.modelInfo;
   let setModelInfo = props.setModelInfo;
+
+  let modelOutputInfo = props.modelOutputInfo;
+  let setModelOutputInfo = props.setModelOutputInfo;
 
   let clusterIsOpen = props.clusterIsOpen;
   let setClusterIsOpen = props.setClusterIsOpen;
@@ -157,126 +172,178 @@ function MainHeader(props) {
   let setMode = props.setMode;
   let labelModeCategory = props.labelModeCategory;
 
-  return (<>
-    <SignInModal
-      isOpen={loginIsOpen}
-      toggle={() => setLoginIsOpen(false)}
-      loginUsername={loginUsername}
-      loginPassword={loginPassword}
-      setLoginUsername={setLoginUsername}
-      setLoginPassword={setLoginPassword}
-      login={login}
-    />
-    <TagManagementModal
-      isOpen={tagManagementIsOpen}
-      toggle={toggleTagManagement}
-      datasetName={datasetName}
-      categoryCounts={categoryCounts}
-      categoryDispatch={categoryDispatch}
-      username={username}
-      isReadOnly={!!!(username)}
-    />
-    <ModelManagementModal
-      isOpen={modelManagementIsOpen}
-      toggle={toggleModelManagement}
-      datasetName={datasetName}
-      modelInfo={modelInfo}
-      setModelInfo={setModelInfo}
-      username={username}
-      isReadOnly={!!!(username)}
-    />
-    <BulkTagModal
-      isOpen={props.bulkTagModalIsOpen}
-      toggle={props.toggleBulkTag}
-      resultSet={props.queryResultSet}
-      customModesByCategory={customModesByCategory}
-      categoryDispatch={categoryDispatch}
-      username={username}
-    />
-    <ClusterModal
-      isOpen={clusterIsOpen}
-      setIsOpen={setClusterIsOpen}
-      isImageOnly={clusteringStrength == 0}
-      isReadOnly={!!!(username)}
-      selection={selection}
-      setSelection={setSelection}
-      clusters={clusters}
-      findSimilar={(image) => {
-        const uuid = uuidv4();
-        knnImagesDispatch({
-          type: "ADD_IMAGE_FROM_DATASET",
-          image,
-          uuid,
-        });
-        setOrderingMode("knn");
-        setClusterIsOpen(false);
-        setSelection({});
-        generateEmbedding({image_id: image.id}, uuid);
-      }}
-      customModesByCategory={customModesByCategory}
-      categoryDispatch={categoryDispatch}
-      username={username}
-      setSubset={setSubset}
-      mode={mode}
-      labelCategory={labelModeCategory}
-    />
-    <Navbar color="primary" className="text-light justify-content-between" dark expand="sm">
-      <Container fluid>
-        <span>
-          <NavbarBrand href="/"><b>Forager</b></NavbarBrand>
-          <NavbarBrand className="font-weight-normal" id="dataset-name">{datasetName}</NavbarBrand>
-        </span>
-        <span>
-          <Nav navbar>
-            {modes.map(({ id, label }) => <NavItem active={mode === id}>
-              <NavLink href="#" onClick={(e) => {
-                setMode(id);
-                e.preventDefault();
-              }}>{label}</NavLink>
-            </NavItem>)}
-          </Nav>
-        </span>
-        <div>
-          <span className="mr-4" onClick={toggleTagManagement} style={{cursor: "pointer"}}>
-            Manage Tags
-          </span>
-          <span className="mr-4" onClick={toggleModelOutputManagement} style={{cursor: "pointer"}}>
-            Manage Model Outputs
+  return (
+    <>
+      <SignInModal
+        isOpen={loginIsOpen}
+        toggle={() => setLoginIsOpen(false)}
+        loginUsername={loginUsername}
+        loginPassword={loginPassword}
+        setLoginUsername={setLoginUsername}
+        setLoginPassword={setLoginPassword}
+        login={login}
+      />
+      <TagManagementModal
+        isOpen={tagManagementIsOpen}
+        toggle={toggleTagManagement}
+        datasetName={datasetName}
+        categoryCounts={categoryCounts}
+        categoryDispatch={categoryDispatch}
+        username={username}
+        isReadOnly={!!!username}
+      />
+      <ModelManagementModal
+        isOpen={modelManagementIsOpen}
+        toggle={toggleModelManagement}
+        datasetName={datasetName}
+        modelInfo={modelInfo}
+        setModelInfo={setModelInfo}
+        username={username}
+        isReadOnly={!!!username}
+      />
+      <BulkTagModal
+        isOpen={props.bulkTagModalIsOpen}
+        toggle={props.toggleBulkTag}
+        resultSet={props.queryResultSet}
+        customModesByCategory={customModesByCategory}
+        categoryDispatch={categoryDispatch}
+        username={username}
+      />
+      <ClusterModal
+        isOpen={clusterIsOpen}
+        setIsOpen={setClusterIsOpen}
+        isImageOnly={clusteringStrength == 0}
+        isReadOnly={!!!username}
+        selection={selection}
+        setSelection={setSelection}
+        clusters={clusters}
+        findSimilar={(image) => {
+          const uuid = uuidv4();
+          knnImagesDispatch({
+            type: "ADD_IMAGE_FROM_DATASET",
+            image,
+            uuid,
+          });
+          setOrderingMode("knn");
+          setClusterIsOpen(false);
+          setSelection({});
+          generateEmbedding({ image_id: image.id }, uuid);
+        }}
+        customModesByCategory={customModesByCategory}
+        categoryDispatch={categoryDispatch}
+        username={username}
+        setSubset={setSubset}
+        mode={mode}
+        labelCategory={labelModeCategory}
+      />
+      <Navbar
+        color="primary"
+        className="text-light justify-content-between"
+        dark
+        expand="sm"
+      >
+        <Container fluid>
+          <span>
+            <NavbarBrand href="/">
+              <b>Forager</b>
+            </NavbarBrand>
+            <NavbarBrand className="font-weight-normal" id="dataset-name">
+              {datasetName}
+            </NavbarBrand>
           </span>
           <span>
-            {username ?
-             <>{username} (<a href="#" onClick={(e) => {
-               setUsername("");
-               e.preventDefault();
-             }}>Sign out</a>)</> :
-             <a href="#" onClick={(e) => {
-               setLoginUsername("");
-               setLoginPassword("");
-               setLoginIsOpen(true);
-               e.preventDefault();
-             }}>Sign in</a>
-            }
+            <Nav navbar>
+              {modes.map(({ id, label }) => (
+                <NavItem active={mode === id}>
+                  <NavLink
+                    href="#"
+                    onClick={(e) => {
+                      setMode(id);
+                      e.preventDefault();
+                    }}
+                  >
+                    {label}
+                  </NavLink>
+                </NavItem>
+              ))}
+            </Nav>
           </span>
-        </div>
-      </Container>
-    </Navbar>
-    <Popover
-      placement="bottom"
-      isOpen={popoverOpen}
-      target="dataset-name"
-      toggle={() => setPopoverOpen(!popoverOpen)}
-      trigger="hover focus"
-      fade={false}
-    >
-      <PopoverBody>
-        <div><b>Training set:</b> {datasetInfo.num_train} image{datasetInfo.num_train === 1 ? "" : "s"}</div>
-        <div><b>Validation set:</b> {datasetInfo.num_val} image{datasetInfo.num_val === 1 ? "" : "s"}</div>
-        <div><b>Index status:</b> {datasetInfo.index_id ? "Created" : "Not created"}</div>
-      </PopoverBody>
-    </Popover>
-  </>);
-};
-
+          <div>
+            <span
+              className="mr-4"
+              onClick={toggleTagManagement}
+              style={{ cursor: "pointer" }}
+            >
+              Manage Tags
+            </span>
+            <span
+              className="mr-4"
+              onClick={toggleModelOutputManagement}
+              style={{ cursor: "pointer" }}
+            >
+              Manage Model Outputs
+            </span>
+            <span>
+              {username ? (
+                <>
+                  {username} (
+                  <a
+                    href="#"
+                    onClick={(e) => {
+                      setUsername("");
+                      e.preventDefault();
+                    }}
+                  >
+                    Sign out
+                  </a>
+                  )
+                </>
+              ) : (
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    setLoginUsername("");
+                    setLoginPassword("");
+                    setLoginIsOpen(true);
+                    e.preventDefault();
+                  }}
+                >
+                  Sign in
+                </a>
+              )}
+            </span>
+            <span
+              className="ml-w"
+              onClick={props.toggleModelSidebar}
+              style={{ cursor: "pointer" }}
+            >
+              >>
+            </span>
+          </div>
+        </Container>
+      </Navbar>
+      <Popover
+        placement="bottom"
+        isOpen={popoverOpen}
+        target="dataset-name"
+        toggle={() => setPopoverOpen(!popoverOpen)}
+        trigger="hover focus"
+        fade={false}
+      >
+        <PopoverBody>
+          <div>
+            <b>Training set:</b> {datasetInfo.num_train} image
+            {datasetInfo.num_train === 1 ? "" : "s"}
+          </div>
+          <div>
+            <b>Validation set:</b> {datasetInfo.num_val} image
+            {datasetInfo.num_val === 1 ? "" : "s"}
+          </div>
+        </PopoverBody>
+      </Popover>
+    </>
+  );
+}
 
 function ClusteringControls(props) {
   let orderByClusterSize = props.orderByClusterSize;
@@ -288,22 +355,26 @@ function ClusteringControls(props) {
   let setClusteringModel = props.setClusteringModel;
   let username = props.username;
   let modelInfo = props.modelInfo;
+  let modelOutputInfo = props.modelOutputInfo;
 
   return (
     <div className="d-flex flex-row align-items-center">
       <div className="custom-switch custom-control mr-4">
-        <Input type="checkbox" className="custom-control-input"
+        <Input
+          type="checkbox"
+          className="custom-control-input"
           id="order-by-cluster-size-switch"
           checked={orderByClusterSize}
           onChange={(e) => setOrderByClusterSize(e.target.checked)}
         />
-        <label className="custom-control-label text-nowrap" htmlFor="order-by-cluster-size-switch">
+        <label
+          className="custom-control-label text-nowrap"
+          htmlFor="order-by-cluster-size-switch"
+        >
           Order by cluster size
         </label>
       </div>
-      <label className="mb-0 mr-2 text-nowrap">
-        Clustering strength:
-      </label>
+      <label className="mb-0 mr-2 text-nowrap">Clustering strength:</label>
       <Slider
         className="mr-4"
         value={clusteringStrength}
@@ -314,7 +385,7 @@ function ClusteringControls(props) {
         id="clustering-feature-bar"
         className="clustering-feature-bar mr-2"
         placeholder="Features to cluster by"
-        features={modelOutputInfo.filter(m => m.has_embeddings)}
+        features={modelOutputInfo.filter((m) => m.has_embeddings)}
         selected={clusteringModel}
         setSelected={setClusteringModel}
       />
@@ -323,17 +394,14 @@ function ClusteringControls(props) {
         size="sm"
         className="ml-4"
         onClick={props.toggleBulkTag}
-        disabled={!!!(username)}
+        disabled={!!!username}
       >
-        <FontAwesomeIcon
-          icon={faTags}
-          className="mr-1"
-        />
+        <FontAwesomeIcon icon={faTags} className="mr-1" />
         Bulk tag results
       </Button>
-    </div>);
-};
-
+    </div>
+  );
+}
 
 function QueryBar(p) {
   let props = p;
@@ -372,8 +440,17 @@ function QueryBar(p) {
       <Container fluid>
         <div className="d-flex flex-row align-items-center">
           <FormGroup className="mb-0">
-            <select className="custom-select mr-2" id="split" value={split} onChange={e => setSplit(e.target.value)}>
-              {splits.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+            <select
+              className="custom-select mr-2"
+              id="split"
+              value={split}
+              onChange={(e) => setSplit(e.target.value)}
+            >
+              {splits.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.label}
+                </option>
+              ))}
             </select>
             <ReactSVG className="icon" src="assets/arrow-caret.svg" />
           </FormGroup>
@@ -395,8 +472,17 @@ function QueryBar(p) {
             setSelected={setDatasetExcludeTags}
           />
           <FormGroup className="mb-0">
-            <select className="custom-select mx-2" id="ordering-mode" value={orderingMode} onChange={e => setOrderingMode(e.target.value)}>
-              {orderingModes.map((m) => <option key={m.id} value={m.id} disabled={m.disabled}>{m.label}</option>)}
+            <select
+              className="custom-select mx-2"
+              id="ordering-mode"
+              value={orderingMode}
+              onChange={(e) => setOrderingMode(e.target.value)}
+            >
+              {orderingModes.map((m) => (
+                <option key={m.id} value={m.id} disabled={m.disabled}>
+                  {m.label}
+                </option>
+              ))}
             </select>
             <ReactSVG className="icon" src="assets/arrow-caret.svg" />
           </FormGroup>
@@ -404,12 +490,16 @@ function QueryBar(p) {
             color="primary"
             onClick={() => setIsLoading(true)}
             disabled={
-            (orderingMode === "svm" && !!!(trainedSvmData)) ||
-            (orderingMode === "knn" && (size(knnImages) === 0 || Object.values(knnImages).some(i => !(i.embedding)))) ||
-            (orderingMode === "dnn" && !!!(rankingModel)) ||
-            (orderingMode === "clip" && !!!(captionQueryEmbedding))
+              (orderingMode === "svm" && !!!trainedSvmData) ||
+              (orderingMode === "knn" &&
+                (size(knnImages) === 0 ||
+                  Object.values(knnImages).some((i) => !i.embedding))) ||
+              (orderingMode === "dnn" && !!!rankingModel) ||
+              (orderingMode === "clip" && !!!captionQueryEmbedding)
             }
-          >Run query</Button>
+          >
+            Run query
+          </Button>
         </div>
         <div className="mt-2 mb-1 d-flex flex-row-reverse justify-content-between">
           <ClusteringControls
@@ -423,29 +513,43 @@ function QueryBar(p) {
             toggleBulkTag={props.toggleBulkTag}
             username={props.username}
             modelInfo={props.modelInfo}
+            modelOutputInfo={props.modelOutputInfo}
           />
-          {(queryResultSet.type === "svm" || queryResultSet.type === "ranking") && <div className="d-flex flex-row align-items-center">
-            <label className="mb-0 mr-2 text-nowrap">Score range:</label>
-            <Range
-              allowCross={false}
-              value={scoreRange}
-              onChange={setScoreRange}
-              onAfterChange={() => p.setIsLoading(true)}
-            />
-            <span className="mb-0 ml-2 text-nowrap text-muted">
-              ({Number(scoreRange[0] / 100).toFixed(2)} to {Number(scoreRange[1] / 100).toFixed(2)})
-            </span>
-          </div>}
-          {subset.length > 0 && <div className="rbt-token rbt-token-removeable alert-secondary">
-            Limited to {subset.length} image{subset.length !== 1 && "s"}
-            <button aria-label="Remove" className="close rbt-close rbt-token-remove-button" type="button" onClick={() => setSubset([])}>
-              <span aria-hidden="true">×</span><span className="sr-only">Remove</span>
-            </button>
-          </div>}
+          {(queryResultSet.type === "svm" ||
+            queryResultSet.type === "ranking") && (
+            <div className="d-flex flex-row align-items-center">
+              <label className="mb-0 mr-2 text-nowrap">Score range:</label>
+              <Range
+                allowCross={false}
+                value={scoreRange}
+                onChange={setScoreRange}
+                onAfterChange={() => p.setIsLoading(true)}
+              />
+              <span className="mb-0 ml-2 text-nowrap text-muted">
+                ({Number(scoreRange[0] / 100).toFixed(2)} to{" "}
+                {Number(scoreRange[1] / 100).toFixed(2)})
+              </span>
+            </div>
+          )}
+          {subset.length > 0 && (
+            <div className="rbt-token rbt-token-removeable alert-secondary">
+              Limited to {subset.length} image{subset.length !== 1 && "s"}
+              <button
+                aria-label="Remove"
+                className="close rbt-close rbt-token-remove-button"
+                type="button"
+                onClick={() => setSubset([])}
+              >
+                <span aria-hidden="true">×</span>
+                <span className="sr-only">Remove</span>
+              </button>
+            </div>
+          )}
         </div>
       </Container>
-    </div>);
-};
+    </div>
+  );
+}
 
 function OrderingModeSelector(p) {
   let datasetInfo = p.datasetInfo;
@@ -459,8 +563,8 @@ function OrderingModeSelector(p) {
   let trainedSvmData = p.trainedSvmData;
   let setTrainedSvmData = p.setTrainedSvmData;
   let svmIsTraining = p.svmIsTraining;
-  let svmModel = p.svmModel
-  let setSvmModel = p.setSvmModel
+  let svmModel = p.svmModel;
+  let setSvmModel = p.setSvmModel;
   let modelInfo = p.modelInfo;
   let modelOutputInfo = p.modelOutputInfo;
   let svmAugmentNegs = p.svmAugmentNegs;
@@ -501,7 +605,7 @@ function OrderingModeSelector(p) {
             categoryDispatch={categoryDispatch}
             selected={svmPosTags}
             disabled={svmIsTraining}
-            setSelected={selected => {
+            setSelected={(selected) => {
               setSvmPosTags(selected);
               setTrainedSvmData(null);
             }}
@@ -514,7 +618,7 @@ function OrderingModeSelector(p) {
             categoryDispatch={categoryDispatch}
             selected={svmNegTags}
             disabled={svmIsTraining}
-            setSelected={selected => {
+            setSelected={(selected) => {
               setSvmNegTags(selected);
               setTrainedSvmData(null);
             }}
@@ -523,10 +627,10 @@ function OrderingModeSelector(p) {
             id="svm-model-bar"
             className="mb-2"
             placeholder="Model features to use (optional)"
-            features={modelOutputInfo.filter(m => m.has_embeddings)}
+            features={modelOutputInfo.filter((m) => m.has_embeddings)}
             disabled={svmIsTraining}
             selected={svmModel}
-            setSelected={selected => {
+            setSelected={(selected) => {
               setSvmModel(selected);
               setTrainedSvmData(null);
             }}
@@ -543,96 +647,119 @@ function OrderingModeSelector(p) {
                 setTrainedSvmData(null);
               }}
             />
-            <label className="custom-control-label" htmlFor="svm-augment-negs-checkbox">
+            <label
+              className="custom-control-label"
+              htmlFor="svm-augment-negs-checkbox"
+            >
               Auto-augment negative set
             </label>
           </div>
-          {svmAugmentNegs && <>
-            <CategoryInput
-              id="svm-augment-negs-include-bar"
-              className="mt-2"
-              placeholder="Tags to include in auto-negative pool"
-              customModesByCategory={customModesByCategory}
-              categoryDispatch={categoryDispatch}
-              selected={svmAugmentIncludeTags}
-              disabled={svmIsTraining}
-              setSelected={selected => {
-                setSvmAugmentIncludeTags(selected);
-                setTrainedSvmData(null);
-              }}
-            />
-            <CategoryInput
-              id="svm-augment-negs-exclude-bar"
-              className="mt-2 mb-1"
-              placeholder="Tags to exclude from auto-negative pool"
-              customModesByCategory={customModesByCategory}
-              categoryDispatch={categoryDispatch}
-              selected={svmAugmentExcludeTags}
-              disabled={svmIsTraining}
-              setSelected={selected => {
-                setSvmAugmentExcludeTags(selected);
-                setTrainedSvmData(null);
-              }}
-            />
-          </>}
+          {svmAugmentNegs && (
+            <>
+              <CategoryInput
+                id="svm-augment-negs-include-bar"
+                className="mt-2"
+                placeholder="Tags to include in auto-negative pool"
+                customModesByCategory={customModesByCategory}
+                categoryDispatch={categoryDispatch}
+                selected={svmAugmentIncludeTags}
+                disabled={svmIsTraining}
+                setSelected={(selected) => {
+                  setSvmAugmentIncludeTags(selected);
+                  setTrainedSvmData(null);
+                }}
+              />
+              <CategoryInput
+                id="svm-augment-negs-exclude-bar"
+                className="mt-2 mb-1"
+                placeholder="Tags to exclude from auto-negative pool"
+                customModesByCategory={customModesByCategory}
+                categoryDispatch={categoryDispatch}
+                selected={svmAugmentExcludeTags}
+                disabled={svmIsTraining}
+                setSelected={(selected) => {
+                  setSvmAugmentExcludeTags(selected);
+                  setTrainedSvmData(null);
+                }}
+              />
+            </>
+          )}
           <Button
             color="light"
             onClick={() => p.setSvmIsTraining(true)}
-            disabled={svmPosTags.length === 0 ||
-                      (svmNegTags.length === 0 && !svmAugmentNegs) ||
-                      svmIsTraining || svmModel === null}
+            disabled={
+              svmPosTags.length === 0 ||
+              (svmNegTags.length === 0 && !svmAugmentNegs) ||
+              svmIsTraining ||
+              svmModel === null
+            }
             className="mt-2 mb-1 w-100"
-          >Train</Button>
-          {!!(trainedSvmData) && <div className="mt-1">
-            Trained model ({trainedSvmData.num_positives} positives,{" "}
-            {trainedSvmData.num_negatives} negatives) &mdash;{" "}
-            precision {Number(trainedSvmData.precision).toFixed(2)},
-            recall {Number(trainedSvmData.recall).toFixed(2)},
-            F1 {Number(trainedSvmData.f1).toFixed(2)}{" "}
-            <ReactTimeAgo date={trainedSvmData.date} timeStyle="mini"/> ago
-          </div>}
+          >
+            Train
+          </Button>
+          {!!trainedSvmData && (
+            <div className="mt-1">
+              Trained model ({trainedSvmData.num_positives} positives,{" "}
+              {trainedSvmData.num_negatives} negatives) &mdash; precision{" "}
+              {Number(trainedSvmData.precision).toFixed(2)}, recall{" "}
+              {Number(trainedSvmData.recall).toFixed(2)}, F1{" "}
+              {Number(trainedSvmData.f1).toFixed(2)}{" "}
+              <ReactTimeAgo date={trainedSvmData.date} timeStyle="mini" /> ago
+            </div>
+          )}
         </div>
       </PopoverBody>
     );
   };
-  return <>
-    {orderingMode === "svm" &&
-     <Popover
-       placement="bottom"
-       isOpen={!clusterIsOpen &&
-               (svmPopoverOpen || svmIsTraining || !!!(trainedSvmData))}
-       target="ordering-mode"
-       trigger="hover"
-       toggle={() => p.setSvmPopoverOpen(!svmPopoverOpen)}
-       fade={false}
-       popperClassName={`svm-popover ${svmIsTraining ? "loading" : ""}`}
-     >
-       {svmPopoverBody}
-     </Popover>}
-    {orderingMode === "knn" && <KnnPopover
-                                 images={p.knnImages}
-                                 dispatch={p.knnImagesDispatch}
-                                 generateEmbedding={p.generateEmbedding}
-                                 useSpatial={knnUseSpatial}
-                                 setUseSpatial={setKnnUseSpatial}
-                                 hasDrag={hasDrag}
-                                 canBeOpen={!clusterIsOpen}
-    />}
-    {orderingMode === "dnn" && <ModelRankingPopover
-                                 modelOutputInfo={modelOutputInfo}
-                                 rankingModel={rankingModel}
-                                 setRankingModel={setRankingModel}
-                                 canBeOpen={!clusterIsOpen}
-    />}
-    {orderingMode === "clip" && <CaptionSearchPopover
-                                  text={captionQuery}
-                                  setText={setCaptionQuery}
-                                  textEmbedding={captionQueryEmbedding}
-                                  setTextEmbedding={setCaptionQueryEmbedding}
-                                  canBeOpen={!clusterIsOpen}
-    />}
-  </>;
-};
+  return (
+    <>
+      {orderingMode === "svm" && (
+        <Popover
+          placement="bottom"
+          isOpen={
+            !clusterIsOpen &&
+            (svmPopoverOpen || svmIsTraining || !!!trainedSvmData)
+          }
+          target="ordering-mode"
+          trigger="hover"
+          toggle={() => p.setSvmPopoverOpen(!svmPopoverOpen)}
+          fade={false}
+          popperClassName={`svm-popover ${svmIsTraining ? "loading" : ""}`}
+        >
+          {svmPopoverBody}
+        </Popover>
+      )}
+      {orderingMode === "knn" && (
+        <KnnPopover
+          images={p.knnImages}
+          dispatch={p.knnImagesDispatch}
+          generateEmbedding={p.generateEmbedding}
+          useSpatial={knnUseSpatial}
+          setUseSpatial={setKnnUseSpatial}
+          hasDrag={hasDrag}
+          canBeOpen={!clusterIsOpen}
+        />
+      )}
+      {orderingMode === "dnn" && (
+        <ModelRankingPopover
+          modelOutputInfo={modelOutputInfo}
+          rankingModel={rankingModel}
+          setRankingModel={setRankingModel}
+          canBeOpen={!clusterIsOpen}
+        />
+      )}
+      {orderingMode === "clip" && (
+        <CaptionSearchPopover
+          text={captionQuery}
+          setText={setCaptionQuery}
+          textEmbedding={captionQueryEmbedding}
+          setTextEmbedding={setCaptionQueryEmbedding}
+          canBeOpen={!clusterIsOpen}
+        />
+      )}
+    </>
+  );
+}
 
 function ImageClusterViewer(props) {
   let datasetInfo = props.datasetInfo;
@@ -645,50 +772,54 @@ function ImageClusterViewer(props) {
   let setPage = props.setPage;
   let page = props.page;
   let queryResultSet = props.queryResultSet;
-  return (<Container fluid>
-    {(!!!(datasetInfo.isNotLoaded) && !isLoading && queryResultSet.num_results == 0) &&
-     <p className="text-center text-muted">No results match your query.</p>}
-    <Row>
-      <Col className="stack-grid">
-        {clusters.map((images, i) =>
-          <ImageStack
-            id={i}
-            onClick={() => {
-              setSelection({cluster: i});
-              setClusterIsOpen(true);
-            }}
-            images={images}
-            showLabel={clusteringStrength > 0}
-            key={i}
-            showDistance={images[0].distance >= 0}
-            distanceText={images[0].distance}
-          />
+  return (
+    <Container fluid>
+      {!!!datasetInfo.isNotLoaded &&
+        !isLoading &&
+        queryResultSet.num_results == 0 && (
+          <p className="text-center text-muted">No results match your query.</p>
         )}
-      </Col>
-    </Row>
-    {(!!!(datasetInfo.isNotLoaded) && queryResultSet.num_results > PAGE_SIZE) &&
-     <div className="mt-4 d-flex justify-content-center">
-       <ReactPaginate
-         pageCount={Math.ceil(queryResultSet.num_results / PAGE_SIZE)}
-         containerClassName="pagination"
-         previousClassName="page-item"
-         previousLinkClassName="page-link"
-         nextClassName="page-item"
-         nextLinkClassName="page-link"
-         activeClassName="active"
-         pageLinkClassName="page-link"
-         pageClassName="page-item"
-         breakClassName="page-item"
-         breakLinkClassName="page-link"
-         forcePage={page}
-         onPageChange={({ selected }) => setPage(selected)}
-         disabledClassName="disabled"
-       />
-     </div>
-    }
-  </Container>);
-};
-
+      <Row>
+        <Col className="stack-grid">
+          {clusters.map((images, i) => (
+            <ImageStack
+              id={i}
+              onClick={() => {
+                setSelection({ cluster: i });
+                setClusterIsOpen(true);
+              }}
+              images={images}
+              showLabel={clusteringStrength > 0}
+              key={i}
+              showDistance={images[0].distance >= 0}
+              distanceText={images[0].distance}
+            />
+          ))}
+        </Col>
+      </Row>
+      {!!!datasetInfo.isNotLoaded && queryResultSet.num_results > PAGE_SIZE && (
+        <div className="mt-4 d-flex justify-content-center">
+          <ReactPaginate
+            pageCount={Math.ceil(queryResultSet.num_results / PAGE_SIZE)}
+            containerClassName="pagination"
+            previousClassName="page-item"
+            previousLinkClassName="page-link"
+            nextClassName="page-item"
+            nextLinkClassName="page-link"
+            activeClassName="active"
+            pageLinkClassName="page-link"
+            pageClassName="page-item"
+            breakClassName="page-item"
+            breakLinkClassName="page-link"
+            forcePage={page}
+            onPageChange={({ selected }) => setPage(selected)}
+            disabledClassName="disabled"
+          />
+        </div>
+      )}
+    </Container>
+  );
+}
 
 const App = () => {
   let { datasetName } = useParams();
@@ -703,7 +834,7 @@ const App = () => {
     const body = { sessionId };
     fetch(url, {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
   };
@@ -753,7 +884,7 @@ const App = () => {
   const setUsername = (u) => {
     window.localStorage.setItem("foragerUsername", u);
     setUsername_(u);
-  }
+  };
 
   //
   // CLUSTER FOCUS MODAL
@@ -769,25 +900,25 @@ const App = () => {
         // were just added on the frontend but don't actually have any associated
         // annotations
         let newCategoryCounts = cloneDeep(oldCategoryCounts);
-        merge(newCategoryCounts, action.data);  // order matters! new counts override
+        merge(newCategoryCounts, action.data); // order matters! new counts override
         return newCategoryCounts;
       }
       case "ADD_CATEGORY": {
         const newCategory = action.category.trim();
         if (newCategory === "") return oldCategoryCounts;
-        let newCategoryCounts = {...oldCategoryCounts};
+        let newCategoryCounts = { ...oldCategoryCounts };
         newCategoryCounts[newCategory] = {};
         return newCategoryCounts;
       }
       case "DELETE_CATEGORY": {
-        let newCategoryCounts = {...oldCategoryCounts};
+        let newCategoryCounts = { ...oldCategoryCounts };
         delete newCategoryCounts[action.category];
         return newCategoryCounts;
       }
       case "RENAME_CATEGORY": {
         const newCategory = action.newCategory.trim();
         if (newCategory === "") return oldCategoryCounts;
-        let newCategoryCounts = {...oldCategoryCounts};
+        let newCategoryCounts = { ...oldCategoryCounts };
         newCategoryCounts[newCategory] = newCategoryCounts[action.oldCategory];
         delete newCategoryCounts[action.oldCategory];
         return newCategoryCounts;
@@ -795,10 +926,12 @@ const App = () => {
       case "ADD_MODE": {
         const newMode = action.mode.trim().toLowerCase();
         if (newMode === "") return oldCategoryCounts;
-        let newCategoryCounts = {...oldCategoryCounts};
-        newCategoryCounts[action.category] = {...newCategoryCounts[action.category]};
-        newCategoryCounts[action.category][newMode] = 0 ||
-          newCategoryCounts[action.category][newMode];
+        let newCategoryCounts = { ...oldCategoryCounts };
+        newCategoryCounts[action.category] = {
+          ...newCategoryCounts[action.category],
+        };
+        newCategoryCounts[action.category][newMode] =
+          0 || newCategoryCounts[action.category][newMode];
         return newCategoryCounts;
       }
       default:
@@ -816,40 +949,44 @@ const App = () => {
 
   const [categoryCounts, categoryDispatch] = useReducer(categoryReducer, {});
   const customModesByCategory = useMemo(() => {
-    const sortedCategories = sortBy(Object.entries(categoryCounts), ([c]) => c.toLowerCase());
-    return new Map(sortedCategories.map(([category, counts]) => {
-      let customModes = [];
-      for (const mode of Object.keys(counts)) {
-        const isCustom = !BUILT_IN_MODES.some(([m]) => m === mode);
-        if (isCustom) customModes.push(mode);
-      }
-      customModes.sort();
-      return [category, customModes];
-    }));
+    const sortedCategories = sortBy(Object.entries(categoryCounts), ([c]) =>
+      c.toLowerCase()
+    );
+    return new Map(
+      sortedCategories.map(([category, counts]) => {
+        let customModes = [];
+        for (const mode of Object.keys(counts)) {
+          const isCustom = !BUILT_IN_MODES.some(([m]) => m === mode);
+          if (isCustom) customModes.push(mode);
+        }
+        customModes.sort();
+        return [category, customModes];
+      })
+    );
   }, [categoryCounts]);
 
   const getDatasetInfo = async () => {
     const url = new URL(`${endpoints.getDatasetInfo}/${datasetName}`);
     let _datasetInfo = await fetch(url, {
       method: "GET",
-    }).then(r => r.json());
+    }).then((r) => r.json());
     setDatasetInfo(_datasetInfo);
     setIsLoading(true);
-  }
+  };
 
-  useEffect(getDatasetInfo, [datasetName]);
+  useEffect(() => getDatasetInfo(), [datasetName]);
 
   const refreshCategoryCounts = async () => {
     const url = new URL(`${endpoints.getCategoryCounts}/${datasetName}`);
     let data = await fetch(url, {
       method: "GET",
-    }).then(r => r.json());
+    }).then((r) => r.json());
     categoryDispatch({
       type: "UPDATE_COUNTS",
       data,
     });
-  }
-  useEffect(refreshCategoryCounts, []);  // TODO(mihirg): figure out when to refresh!
+  };
+  useEffect(() => refreshCategoryCounts(), []); // TODO(mihirg): figure out when to refresh!
 
   // KNN queries
   const generateEmbedding = async (req, uuid) => {
@@ -857,15 +994,15 @@ const App = () => {
     const body = {
       index_id: datasetInfo.index_id,
       model: "resnet",
-      model_output_id: modelOutputInfo.find(m => m.name === "resnet").id,
+      model_output_id: modelOutputInfo.find((m) => m.name === "resnet").id,
       ...req,
     };
 
     const res = await fetch(url, {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    }).then(res => res.json());
+    }).then((res) => res.json());
 
     knnImagesDispatch({
       type: "SET_EMBEDDING",
@@ -877,26 +1014,37 @@ const App = () => {
   const knnReducer = (state, action) => {
     switch (action.type) {
       case "ADD_IMAGE_FROM_DATASET": {
-        let newState = {...state};
-        let newImageState = {type: "dataset", id: action.image.id, src: action.image.thumb};
+        let newState = { ...state };
+        let newImageState = {
+          type: "dataset",
+          id: action.image.id,
+          src: action.image.thumb,
+        };
         newState[action.uuid] = newImageState;
         return newState;
       }
       case "ADD_IMAGE_FILE": {
-        let newState = {...state};
-        let newImageState = {type: "file", file: action.file, src: URL.createObjectURL(action.file)};
+        let newState = { ...state };
+        let newImageState = {
+          type: "file",
+          file: action.file,
+          src: URL.createObjectURL(action.file),
+        };
         newState[action.uuid] = newImageState;
         return newState;
       }
       case "SET_EMBEDDING": {
         if (!state.hasOwnProperty(action.uuid)) return state;
-        let newState = {...state};
-        let newImageState = {...state[action.uuid], embedding: action.embedding};
+        let newState = { ...state };
+        let newImageState = {
+          ...state[action.uuid],
+          embedding: action.embedding,
+        };
         newState[action.uuid] = newImageState;
         return newState;
       }
       case "DELETE_IMAGE": {
-        let newState = {...state};
+        let newState = { ...state };
         delete newState[action.uuid];
         return newState;
       }
@@ -954,19 +1102,19 @@ const App = () => {
     const url = new URL(`${endpoints.trainSvm}/${datasetName}`);
     let body = {
       index_id: datasetInfo.index_id,
-      pos_tags: svmPosTags.map(t => `${t.category}:${t.value}`),
-      neg_tags: svmNegTags.map(t => `${t.category}:${t.value}`),
+      pos_tags: svmPosTags.map((t) => `${t.category}:${t.value}`),
+      neg_tags: svmNegTags.map((t) => `${t.category}:${t.value}`),
       augment_negs: svmAugmentNegs,
-      include: svmAugmentIncludeTags.map(t => `${t.category}:${t.value}`),
-      exclude: svmAugmentExcludeTags.map(t => `${t.category}:${t.value}`),
+      include: svmAugmentIncludeTags.map((t) => `${t.category}:${t.value}`),
+      exclude: svmAugmentExcludeTags.map((t) => `${t.category}:${t.value}`),
       model_output_id: svmModel.id,
-    }
+    };
     url.search = new URLSearchParams(body).toString();
     const svmData = await fetch(url, {
       method: "GET",
-    }).then(r => r.json());
+    }).then((r) => r.json());
 
-    setTrainedSvmData({...svmData, date: Date.now()});
+    setTrainedSvmData({ ...svmData, date: Date.now() });
   };
   useEffect(() => {
     if (svmIsTraining) trainSvm().finally(() => setSvmIsTraining(false));
@@ -980,9 +1128,9 @@ const App = () => {
     let body = {
       split: split,
       index_id: datasetInfo.index_id,
-      include: datasetIncludeTags.map(t => `${t.category}:${t.value}`),
-      exclude: datasetExcludeTags.map(t => `${t.category}:${t.value}`),
-      subset: subset.map(im => im.id),
+      include: datasetIncludeTags.map((t) => `${t.category}:${t.value}`),
+      exclude: datasetExcludeTags.map((t) => `${t.category}:${t.value}`),
+      subset: subset.map((im) => im.id),
       score_min: scoreRange[0] / 100,
       score_max: scoreRange[1] / 100,
     };
@@ -996,8 +1144,10 @@ const App = () => {
       body.order = orderingMode;
     } else if (orderingMode === "knn") {
       url = new URL(`${endpoints.queryKnn}/${datasetName}`);
-      body.embeddings = Object.values(knnImages).map(i => i.embedding);
-      body.model_output_id = modelOutputInfo.find(m => m.name === "resnet").id;
+      body.embeddings = Object.values(knnImages).map((i) => i.embedding);
+      body.model_output_id = modelOutputInfo.find(
+        (m) => m.name === "resnet"
+      ).id;
       body.use_full_image = !knnUseSpatial;
     } else if (orderingMode === "svm") {
       url = new URL(`${endpoints.querySvm}/${datasetName}`);
@@ -1009,7 +1159,7 @@ const App = () => {
     } else if (orderingMode === "clip") {
       url = new URL(`${endpoints.queryKnn}/${datasetName}`);
       body.embeddings = [captionQueryEmbedding];
-      body.model_output_id = modelOutputInfo.find(m => m.name === "clip").id;
+      body.model_output_id = modelOutputInfo.find((m) => m.name === "clip").id;
       body.use_dot_product = true;
     } else {
       console.error(`Query type (${orderingMode}) not implemented`);
@@ -1017,9 +1167,9 @@ const App = () => {
     }
     const resultSet = await fetch(url, {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    }).then(r => r.json());
+    }).then((r) => r.json());
 
     setPage(0);
     setQueryResultSet(resultSet);
@@ -1036,22 +1186,22 @@ const App = () => {
         type: null,
       });
       return;
-    };
+    }
 
     let url = new URL(`${endpoints.getResults}/${datasetName}`);
-    let params =  {
+    let params = {
       clustering_model_output_id: clusteringModel.id,
       result_set_id: queryResultSet.id,
       offset: page * PAGE_SIZE,
       num: PAGE_SIZE,
-    }
+    };
     if (clusteringModel) {
-      params.clustering_model = clusteringModel
+      params.clustering_model = clusteringModel;
     }
     url.search = new URLSearchParams(params).toString();
     const results = await fetch(url, {
       method: "GET",
-    }).then(r => r.json());
+    }).then((r) => r.json());
 
     const images = results.paths.map((path, i) => {
       let filename = path.substring(path.lastIndexOf("/") + 1);
@@ -1067,8 +1217,11 @@ const App = () => {
 
     window.scrollTo(0, 0);
 
-    if ((queryResultSet.type === "knn" || queryResultSet.type === "svm") &&
-        (queryResultData.type !== "knn" && queryResultData.type !== "svm")) {
+    if (
+      (queryResultSet.type === "knn" || queryResultSet.type === "svm") &&
+      queryResultData.type !== "knn" &&
+      queryResultData.type !== "svm"
+    ) {
       setOrderByClusterSize(false);
     }
 
@@ -1080,20 +1233,22 @@ const App = () => {
   };
 
   useEffect(() => {
-    if (isLoading) runQuery().finally(() => {
-      setIsLoading(false);
+    if (isLoading)
+      runQuery().finally(() => {
+        setIsLoading(false);
 
-      // NOTE(fpoms): the first query on page load is optimized to be fast by
-      // querying for only the first page of results. This code is meant to
-      // re-run the query so that we get the full pagination results after
-      // initial image load (500ms)
-      if (isFirstLoad.current) {
-        isFirstLoad.current = false;
-        setTimeout(()=> {      // SET A TIMEOUT
-          setIsLoading(true);
-        }, 500);
-      }
-    });
+        // NOTE(fpoms): the first query on page load is optimized to be fast by
+        // querying for only the first page of results. This code is meant to
+        // re-run the query so that we get the full pagination results after
+        // initial image load (500ms)
+        if (isFirstLoad.current) {
+          isFirstLoad.current = false;
+          setTimeout(() => {
+            // SET A TIMEOUT
+            setIsLoading(true);
+          }, 500);
+        }
+      });
   }, [isLoading]);
 
   useEffect(() => {
@@ -1104,7 +1259,7 @@ const App = () => {
   const setSubset = (subset) => {
     setSubset_(subset);
     setIsLoading(true);
-  }
+  };
 
   // Automatically (re-)cluster whenever new results load; also run this manually when
   // the user releases the cluster strength slider
@@ -1112,7 +1267,7 @@ const App = () => {
 
   const recluster = () => {
     if (clusteringStrength == 0) {
-      setClusters(queryResultData.images.map(i => [i]));
+      setClusters(queryResultData.images.map((i) => [i]));
     } else {
       const thresh = Math.pow(clusteringStrength / 100, 2);
       let ds = disjointSet();
@@ -1128,7 +1283,7 @@ const App = () => {
       if (orderByClusterSize) clusters.sort((a, b) => b.length - a.length);
       setClusters(clusters);
     }
-  }
+  };
   useEffect(recluster, [queryResultData, setClusters, orderByClusterSize]);
 
   //
@@ -1140,14 +1295,18 @@ const App = () => {
     if (svmPopoverRepositionFunc.current) svmPopoverRepositionFunc.current();
   };
 
-  const [labelModeCategory, setLabelModeCategory] = useState(null);  // label mode
-  const [modelInfo, setModelInfo] = useState([]);  // train mode
+  const [labelModeCategory, setLabelModeCategory] = useState(null); // label mode
+  const [modelInfo, setModelInfo] = useState([]); // train mode
+  const [modelOutputInfo, setModelOutputInfo] = useState([]);
 
-   //
-   // BULK TAG MODAL
-   //
-   const [bulkTagModalIsOpen, setBulkTagModalIsOpen] = useState(false);
-   const toggleBulkTag = () => setBulkTagModalIsOpen(!bulkTagModalIsOpen);
+  const [modelSidebarIsOpen, setModelSidebarIsOpen] = useState(false);
+  const toggleModelSidebar = () => setModelSidebarIsOpen((v) => !v);
+
+  //
+  // BULK TAG MODAL
+  //
+  const [bulkTagModalIsOpen, setBulkTagModalIsOpen] = useState(false);
+  const toggleBulkTag = () => setBulkTagModalIsOpen(!bulkTagModalIsOpen);
 
   //
   // RENDERING
@@ -1178,6 +1337,7 @@ const App = () => {
     queryResultSet: queryResultSet,
     bulkTagModalIsOpen: bulkTagModalIsOpen,
     toggleBulkTag: toggleBulkTag,
+    toggleModelSidebar: toggleModelSidebar,
   };
   let queryBarProps = {
     datasetInfo: datasetInfo,
@@ -1213,6 +1373,7 @@ const App = () => {
     toggleBulkTag: toggleBulkTag,
     username: username,
     modelInfo: modelInfo,
+    modelOutputInfo: modelOutputInfo,
   };
   let orderingModeProps = {
     datasetInfo: datasetInfo,
@@ -1259,54 +1420,70 @@ const App = () => {
   };
 
   return (
-    <div className={`main ${(isLoading || pageIsLoading) ? "loading" : ""}`}>
-      <MainHeader {...mainHeaderProps}/>
-      <div className="border-bottom py-2 mode-container"
-        style={{display: mode !== "explore" ? "block" : "none"}}>
-        <Container fluid>
-          <LabelPanel
-            customModesByCategory={customModesByCategory}
-            categoryDispatch={categoryDispatch}
-            category={labelModeCategory}
-            setCategory={setLabelModeCategory}
-            isVisible={mode === "label"}
-          />
-          <TrainPanel
-            datasetName={datasetName}
+    <div className={`main ${isLoading || pageIsLoading ? "loading" : ""}`}>
+      <div className="main-panel">
+        <MainHeader {...mainHeaderProps} />
+        <div
+          className="border-bottom py-2 mode-container"
+          style={{ display: mode !== "explore" ? "block" : "none" }}
+        >
+          <Container fluid>
+            <LabelPanel
+              customModesByCategory={customModesByCategory}
+              categoryDispatch={categoryDispatch}
+              category={labelModeCategory}
+              setCategory={setLabelModeCategory}
+              isVisible={mode === "label"}
+            />
+            <TrainPanel
+              datasetName={datasetName}
+              datasetInfo={datasetInfo}
+              modelInfo={modelInfo}
+              setModelInfo={setModelInfo}
+              isVisible={mode === "train"}
+              username={username}
+              disabled={!!!username}
+              customModesByCategory={customModesByCategory}
+            />
+            <ValidatePanel
+              datasetName={datasetName}
+              modelInfo={modelInfo}
+              datasetInfo={datasetInfo}
+              username={username}
+              isVisible={mode === "validate"}
+            />
+          </Container>
+        </div>
+        <div className="app">
+          <QueryBar {...queryBarProps} />
+          <OrderingModeSelector {...orderingModeProps} />
+          <ImageClusterViewer
             datasetInfo={datasetInfo}
-            modelInfo={modelInfo}
-            setModelInfo={setModelInfo}
-            isVisible={mode === "train"}
-            username={username}
-            disabled={!!!(username)}
-            customModesByCategory={customModesByCategory}
+            isLoading={isLoading || pageIsLoading}
+            queryResultData={queryResultData}
+            queryResultSet={queryResultSet}
+            clusters={clusters}
+            clusteringStrength={clusteringStrength}
+            setSelection={setSelection}
+            setClusterIsOpen={setClusterIsOpen}
+            setPage={setPage}
+            page={page}
           />
-          <ValidatePanel
-            datasetName={datasetName}
-            modelInfo={modelInfo}
-            datasetInfo={datasetInfo}
-            username={username}
-            isVisible={mode === "validate"}
-          />
-        </Container>
+        </div>
       </div>
-      <div className="app">
-        <QueryBar {...queryBarProps}/>
-        <OrderingModeSelector {...orderingModeProps}/>
-        <ImageClusterViewer
-          datasetInfo={datasetInfo}
-          isLoading={isLoading || pageIsLoading}
-          queryResultData={queryResultData}
-          queryResultSet={queryResultSet}
-          clusters={clusters}
-          clusteringStrength={clusteringStrength}
-          setSelection={setSelection}
-          setClusterIsOpen={setClusterIsOpen}
-          setPage={setPage}
-          page={page} />
-      </div>
+      <ModelSidebar
+        className="model-sidebar"
+        datasetName={datasetName}
+        datasetInfo={datasetInfo}
+        modelInfo={[]}
+        setModelInfo={[]}
+        isOpen={modelSidebarIsOpen}
+        isVisible={true}
+        username={username}
+        disabled={!!!username}
+      />
     </div>
   );
-}
+};
 
 export default App;
