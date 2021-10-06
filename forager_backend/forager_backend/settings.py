@@ -29,14 +29,14 @@ if os.path.exists(django_settings_path):
         django_settings = json.load(f)
 else:
     temp_dir = tempfile.TemporaryDirectory()
+    default_db_path = os.path.expanduser("~/.forager/db.sqlite3")
     django_settings = {
-        "temp_dir": temp_dir,
         "secret_key": "s&*+2lskkfm0l&ni9rd873xhy3tdb_04*w3cpon9*)1m8ehtib",
         "frontend_port": 4000,
         "allowed_hosts": [],
         "db": {
             "ENGINE": "django.db.backends.sqlite3",
-            "NAME": temp_dir.name + "/db.sqlite3",
+            "NAME": default_db_path,
         },
     }
 
