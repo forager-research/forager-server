@@ -124,6 +124,28 @@ def run_frontend(q):
         q.put([False])
 
 
+def dev_frontend(q):
+    try:
+        import forager_frontend
+        from forager_frontend.log import init_logging
+
+        init_logging()
+
+        os.environ.setdefault("REACT_APP_SERVER_URL", "http://localhost:8000")
+        os.environ.setdefault("PORT", "4000")
+        print("Running frontend...")
+        q.put([True])
+        cwd = os.path.join(
+            os.path.dirname(os.path.realpath(forager_frontend.__file__)), "../node"
+        )
+        subprocess.run("npm install", cwd=cwd, shell=True)
+        subprocess.run("npm run start", cwd=cwd, shell=True)
+    except Exception:
+        print(traceback.format_exc())
+    finally:
+        q.put([False])
+
+
 class ForagerApp(object):
     web_server: Process
     embedding_server: Process
@@ -133,8 +155,8 @@ class ForagerApp(object):
     embedding_server_q: Queue
     file_server_q: Queue
 
-    def __init__(self):
-        pass
+    def __init__(self, dev=False):
+        self.dev = dev
 
     def _run_server(self, fn) -> Tuple[Process, Queue]:
         q = Queue()
@@ -158,8 +180,11 @@ class ForagerApp(object):
         )
         self.services.append(("Compute", self.embedding_server_q))
 
-        if not DEBUG_FRONTEND:
-            file_server_wd = ""
+        file_server_wd = ""
+        if self.dev:
+            self.file_server, self.file_server_q = self._run_server(dev_frontend)
+            self.services.append(("Frontend", self.file_server_q))
+        else:
             self.file_server, self.file_server_q = self._run_server(run_frontend)
             self.services.append(("Frontend", self.file_server_q))
 
