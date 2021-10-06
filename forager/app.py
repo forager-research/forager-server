@@ -138,6 +138,7 @@ def dev_frontend(q):
         cwd = os.path.join(
             os.path.dirname(os.path.realpath(forager_frontend.__file__)), "../node"
         )
+        subprocess.run("npm install", cwd=cwd, shell=True)
         subprocess.run("npm run start", cwd=cwd, shell=True)
     except Exception:
         print(traceback.format_exc())
