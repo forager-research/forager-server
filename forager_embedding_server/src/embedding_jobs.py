@@ -24,14 +24,22 @@ class EmbeddingInferenceJob:
     def __init__(
         self,
         job_id: str,
+        model_output_name: str,
         image_list_path: str,
         embedding_type: str,
         output_path: str,
+        session: aiohttp.ClientSession,
+        callback_url: Optional[str] = None,
+        callback_data: Optional[Dict] = None,
     ):
         self.job_id = job_id
+        self.model_output_name = model_output_name
         self.image_list_path = image_list_path
         self.embedding_type = embedding_type
         self.embeddings_path = output_path
+        self.session = session
+        self.callback_url = callback_url
+        self.callback_data = callback_data
 
         self.image_list = load_image_list(image_list_path)
 
@@ -95,7 +103,7 @@ class EmbeddingInferenceJob:
     async def run_in_background(self):
         self._start_time = time.time()
 
-        def finish(failure_reason: Optional[str] = None):
+        async def finish(failure_reason: Optional[str] = None):
             logger.info(
                 f"EmbeddingJob[{self.job_id}]: finished with {len(self.image_list)} images"
             )
@@ -107,13 +115,32 @@ class EmbeddingInferenceJob:
 
             self.finished.set()
 
+            if self.callback_url:
+                status = {
+                    "finished": self.status["finished"],
+                    "failed": self.status["failed"],
+                    "failure_reason": self.status["failure_reason"],
+                    "status": self.status,
+                    "model_output_name": self.model_output_name,
+                    "image_list_path": self.image_list_path,
+                    "embeddings_path": self.embeddings_path,
+                    "callback_data": self.callback_data,
+                }
+                async with self.session.post(
+                    self.callback_url, json=status
+                ) as response:
+                    if response.status != 200:
+                        logger.warning(
+                            f"EmbeddingJob: callback to {self.callback_url} failed"
+                        )
+
         try:
             logger.info(f"EmbeddingJob: started with {len(self.image_list)} images")
 
             if len(self.image_list) == 0:
                 with open(self.embeddings_path, "w") as f:
                     pass
-                finish()
+                await finish()
 
             model = BUILTIN_MODELS[self.embedding_type]
             model_output_dim = model.output_dim()
@@ -136,11 +163,11 @@ class EmbeddingInferenceJob:
                 )
 
             embeddings.flush()
-            finish()
+            await finish()
 
         except Exception as e:
             print(traceback.print_exc())
-            finish(failure_reason=str(e))
+            await finish(failure_reason=str(e))
 
     async def stop(self):
         if self._task is not None and not self._task.done():

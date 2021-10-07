@@ -10,6 +10,7 @@ class Dataset(models.Model):
     train_directory = models.CharField(max_length=LONG_STRING_LENGTH)
     val_directory = models.CharField(max_length=LONG_STRING_LENGTH, blank=True)
     hidden = models.BooleanField(default=False)
+    created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         indexes = [
