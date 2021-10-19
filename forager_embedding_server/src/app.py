@@ -18,12 +18,9 @@ import sanic.response as resp
 from forager_embedding_server.ais import ais_singleiter, get_fscore
 from forager_embedding_server.config import CONFIG
 from forager_embedding_server.embedding_jobs import EmbeddingInferenceJob
-from forager_embedding_server.jobs_data import (
-    ImageList,
-    QueryResult,
-    load_embedding_set,
-    load_score_set,
-)
+from forager_embedding_server.jobs_data import (ImageList, QueryResult,
+                                                load_embedding_set,
+                                                load_score_set)
 from forager_embedding_server.utils import CleanupDict
 from forager_knn import utils
 from PIL import Image
@@ -34,13 +31,10 @@ from sklearn.metrics import precision_score, recall_score
 BUILD_WITH_KUBE = False
 
 if BUILD_WITH_KUBE:
+    from forager_embedding_server.bgsplit_jobs import (BGSplitInferenceJob,
+                                                       BGSplitTrainingJob,
+                                                       Trainer)
     from forager_knn.clusters import TerraformModule
-
-    from forager_embedding_server.bgsplit_jobs import (
-        BGSplitInferenceJob,
-        BGSplitTrainingJob,
-        Trainer,
-    )
 
 # Create a logger for the server
 
@@ -83,6 +77,8 @@ async def start_embedding_job(request):
     model_output_name = request.json["model_output_name"]
     splits_to_image_paths = request.json["splits_to_image_paths"]
     embedding_type = request.json["embedding_type"]
+    callback_url = request.json.get("callback_url")
+    callback_data = request.json.get("callback_data")
 
     model_uuid = str(uuid.uuid4())
 
@@ -98,11 +94,16 @@ async def start_embedding_job(request):
 
     # Create embedding job
     job_id = str(uuid.uuid4())
+    http_session = utils.create_unlimited_aiohttp_session()
     embedding_job = EmbeddingInferenceJob(
         job_id=job_id,
+        model_output_name=model_output_name,
         image_list_path=str(image_lists_path),
         embedding_type=embedding_type,
         output_path=str(embeddings_path),
+        session=http_session,
+        callback_url=callback_url,
+        callback_data=callback_data,
     )
 
     # Run job
@@ -115,19 +116,22 @@ async def start_embedding_job(request):
 
 @app.route("/embedding_job_status", methods=["GET"])
 async def embedding_job_status(request):
-    job_id = request.args["job_id"][0]
-    job = current_embedding_jobs.get(job_id)
+    job_ids = request.args["job_ids"]
+    statuses = {}
+    for job_id in job_ids:
+        job = current_embedding_jobs.get(job_id)
 
-    status = {
-        "has_job": job is not None,
-        "finished": job.status["finished"] if job else False,
-        "failed": job.status["failed"] if job else False,
-        "failure_reason": job.status["failure_reason"] if job else "",
-        "status": job.status if job else None,
-        "image_list_path": job.image_list_path if job else "",
-        "embeddings_path": job.embeddings_path if job else "",
-    }
-    return resp.json(status)
+        statuses[job_id] = {
+            "has_job": job is not None,
+            "finished": job.status["finished"] if job else False,
+            "failed": job.status["failed"] if job else False,
+            "failure_reason": job.status["failure_reason"] if job else "",
+            "status": job.status if job else None,
+            "model_output_name": job.model_output_name if job else "",
+            "image_list_path": job.image_list_path if job else "",
+            "embeddings_path": job.embeddings_path if job else "",
+        }
+    return resp.json(statuses)
 
 
 #

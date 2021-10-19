@@ -131,4 +131,24 @@ urlpatterns = [
     ),
     path("api/create_dataset", views.create_dataset, name="create_dataset"),
     path("api/delete_dataset", views.delete_dataset, name="delete_dataset"),
+    path(
+        "api/start_model_inference",
+        views.start_model_inference,
+        name="start_model_inference",
+    ),
+    path(
+        "api/model_inference_status",
+        views.model_inference_status,
+        name="model_inference_status",
+    ),
+    path(
+        "api/stop_model_inference",
+        views.stop_model_inference,
+        name="stop_model_inference",
+    ),
+    path(
+        "api/model_inference_callback",
+        views.model_inference_callback,
+        name="model_inference_callback",
+    ),
 ]

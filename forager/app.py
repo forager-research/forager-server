@@ -125,6 +125,24 @@ def run_frontend(q):
 
 
 def dev_frontend(q):
+    class TempSymlink:
+        def __init__(self, src, dest):
+            self.src = src
+            self.dest = dest
+
+        def __enter__(self):
+            if os.path.exists(self.dest) or os.path.islink(self.dest):
+                if os.path.islink:
+                    os.unlink(self.dest)
+                else:
+                    raise FileExistsError(
+                        f"Attempted to symlink {self.dest} to {self.src}, but {self.dest} exists and is not a symlink."
+                    )
+            os.symlink(self.src, self.dest)
+
+        def __exit__(self, type, value, traceback):
+            os.unlink(self.dest)
+
     try:
         import forager_frontend
         from forager_frontend.log import init_logging
@@ -139,7 +157,8 @@ def dev_frontend(q):
             os.path.dirname(os.path.realpath(forager_frontend.__file__)), "../node"
         )
         subprocess.run("npm install", cwd=cwd, shell=True)
-        subprocess.run("npm run start", cwd=cwd, shell=True)
+        with TempSymlink("/", os.path.join(cwd, "public/files")):
+            subprocess.run("npm run start", cwd=cwd, shell=True)
     except Exception:
         print(traceback.format_exc())
     finally:

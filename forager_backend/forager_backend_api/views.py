@@ -1092,8 +1092,9 @@ def add_val_annotations(request):
 @csrf_exempt
 def get_datasets(request):
     datasets = Dataset.objects.filter(hidden=False)
-    dataset_names = list(datasets.values_list("name", flat=True))
-    return JsonResponse({"dataset_names": dataset_names})
+    return JsonResponse(
+        {"datasets": [{"name": d.name, "created_at": d.created} for d in datasets]}
+    )
 
 
 @api_view(["GET"])
@@ -1294,6 +1295,23 @@ def create_dataset(request):
     ]
     DatasetItem.objects.bulk_create(items, batch_size=10000)
 
+    return JsonResponse({"status": "success"})
+
+
+@api_view(["POST"])
+@csrf_exempt
+def start_model_inference(request):
+    payload = json.loads(request.body)
+    dataset_name = payload["dataset"]
+    model_name = payload["model"]
+    model_output_name = payload["model_output_name"]
+
+    dataset = get_object_or_404(Dataset, name=dataset_name)
+
+    # Get all paths
+    items = DatasetItem.objects.filter(dataset=dataset)
+    paths = [(item.path, item.identifier, item.is_val) for item in items]
+
     # Compute resnet and clip model outputs if requested
     splits_to_image_paths = {"train": [], "val": []}
     for path, ident, is_val in paths:
@@ -1303,73 +1321,78 @@ def create_dataset(request):
         r = requests.post(
             settings.EMBEDDING_SERVER_ADDRESS + "/start_embedding_job",
             json={
-                "model_output_name": "resnet",
+                "model_output_name": model_output_name,
                 "splits_to_image_paths": splits_to_image_paths,
-                "embedding_type": "resnet",
+                "embedding_type": model_name,
+                "callback_url": "http://localhost:"
+                + request.get_port()
+                + "/api/model_inference_callback",
+                "callback_data": {"dataset_name": dataset_name},
             },
         )
         response_data = r.json()
-        resnet_job_id = response_data["job_id"]
-
-        r = requests.post(
-            settings.EMBEDDING_SERVER_ADDRESS + "/start_embedding_job",
-            json={
-                "model_output_name": "clip",
-                "splits_to_image_paths": splits_to_image_paths,
-                "embedding_type": "clip",
-            },
-        )
-        response_data = r.json()
-        clip_job_id = response_data["job_id"]
-
-        job_ids_left = [("resnet", resnet_job_id), ("clip", clip_job_id)]
-        while len(job_ids_left) > 0:
-            next_jobs = []
-            for name, job_id in job_ids_left:
-                r = requests.get(
-                    settings.EMBEDDING_SERVER_ADDRESS + "/embedding_job_status",
-                    params={"job_id": job_id},
-                )
-                response_data = r.json()
-                if not response_data["has_job"]:
-                    dataset.delete()
-                    return JsonResponse(
-                        {
-                            "status": "failure",
-                            "failure_reason": "Embedding server did not receive embedding job",
-                        },
-                        status=500,
-                    )
-
-                if not response_data["finished"]:
-                    next_jobs.append((name, job_id))
-                else:
-                    if response_data["failed"]:
-                        failure_reason = response_data["failure_reason"]
-                        dataset.delete()
-                        return JsonResponse(
-                            {"status": "failure", "failure_reason": failure_reason},
-                            status=500,
-                        )
-                    ModelOutput(
-                        dataset=dataset,
-                        name=name,
-                        image_list_path=response_data["image_list_path"],
-                        embeddings_path=response_data["embeddings_path"],
-                    ).save()
-            time.sleep(3)
-            job_ids_left = next_jobs
+        job_id = response_data["job_id"]
 
     except requests.exceptions.RequestException:  # This is the correct syntax
-        dataset.delete()
         return JsonResponse(
             {"status": "failure", "reason": "Failed to create embeddings for dataset."},
             status=500,
         )
 
-    # Add model outputs to db
+    return JsonResponse({"job_id": job_id})
 
-    return JsonResponse({"status": "success"})
+
+@api_view(["GET"])
+@csrf_exempt
+def model_inference_status(request):
+    single_job = False
+    if "job_ids" in request.GET:
+        job_ids = request.GET["job_ids"].split(",")
+    else:
+        single_job = True
+        job_ids = [request.GET["job_id"]]
+
+    r = requests.get(
+        settings.EMBEDDING_SERVER_ADDRESS + "/embedding_job_status",
+        params={"job_ids": job_ids},
+    )
+    response_data = r.json()
+    if single_job:
+        response_data = response_data[job_ids[0]]
+    return JsonResponse(response_data)
+
+
+@api_view(["POST"])
+@csrf_exempt
+def stop_model_inference(request):
+    payload = json.loads(request.body)
+    name = payload["dataset"]
+    train_directory = payload["train_images_directory"]
+    # TODO(fpoms, 8-19-21): implement this
+    return JsonResponse({}, status=501)
+    pass
+
+
+@api_view(["POST"])
+@csrf_exempt
+def model_inference_callback(request):
+    payload = json.loads(request.body)
+    response_data = payload
+    dataset_name = payload["callback_data"]["dataset_name"]
+
+    if response_data["finished"] and not response_data["failed"]:
+        dataset = get_object_or_404(Dataset, name=dataset_name)
+        model_output_name = response_data["model_output_name"]
+        if not ModelOutput.objects.filter(
+            dataset=dataset, name=model_output_name
+        ).exists():
+            ModelOutput(
+                dataset=dataset,
+                name=model_output_name,
+                image_list_path=response_data["image_list_path"],
+                embeddings_path=response_data["embeddings_path"],
+            ).save()
+    return JsonResponse({})
 
 
 @api_view(["POST"])
