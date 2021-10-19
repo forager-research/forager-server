@@ -71,7 +71,7 @@ const DatasetList = () => {
     let _datasets = await fetch(url, {
       method: "GET",
     }).then((r) => r.json());
-    setDatasets(_datasets.dataset_names);
+    setDatasets(_datasets.datasets);
   }
 
   useEffect(() => {
@@ -79,14 +79,12 @@ const DatasetList = () => {
   }, []);
 
   async function getJobStatus() {
-    const jobs = {};
     for (const datasetName in unfinishedJobs) {
-      if (unfinishedJobs[datasetName].length === 0) continue;
+      if (Object.keys(unfinishedJobs[datasetName]).length === 0) continue;
 
-      jobs[datasetName] = [];
       const url = new URL(endpoints.inferenceStatus);
       let params = {
-        job_ids: unfinishedJobs[datasetName],
+        job_ids: Object.keys(unfinishedJobs[datasetName]),
       };
       url.search = new URLSearchParams(params).toString();
       let statuses = await fetch(url, {
