@@ -131,6 +131,13 @@ def dev_frontend(q):
             self.dest = dest
 
         def __enter__(self):
+            if os.path.exists(self.dest) or os.path.islink(self.dest):
+                if os.path.islink:
+                    os.unlink(self.dest)
+                else:
+                    raise FileExistsError(
+                        f"Attempted to symlink {self.dest} to {self.src}, but {self.dest} exists and is not a symlink."
+                    )
             os.symlink(self.src, self.dest)
 
         def __exit__(self, type, value, traceback):

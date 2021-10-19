@@ -1240,7 +1240,7 @@ def model_info(model):
     return {
         "model_id": model.model_id,
         "timestamp": model.last_updated,
-        "has_uheckpoint": model.checkpoint_path is not None,
+        "has_checkpoint": model.checkpoint_path is not None,
         "has_output": model.output_directory is not None,
         "pos_tags": serialize_tag_set_for_client(pos_tags),
         "neg_tags": serialize_tag_set_for_client(neg_tags | augment_negs_include),
@@ -1294,8 +1294,6 @@ def create_dataset(request):
         for path, ident, is_val in paths
     ]
     DatasetItem.objects.bulk_create(items, batch_size=10000)
-
-    # Add model outputs to db
 
     return JsonResponse({"status": "success"})
 
@@ -1370,6 +1368,8 @@ def stop_model_inference(request):
     payload = json.loads(request.body)
     name = payload["dataset"]
     train_directory = payload["train_images_directory"]
+    # TODO(fpoms, 8-19-21): implement this
+    return JsonResponse({}, status=501)
     pass
 
 

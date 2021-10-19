@@ -131,11 +131,13 @@ class EmbeddingInferenceJob:
                 ) as response:
                     if response.status != 200:
                         logger.warning(
-                            f"EmbeddingJob: callback to {self.callback_url} failed"
+                            f"EmbeddingJob[{self.job_id}]: callback to {self.callback_url} failed"
                         )
 
         try:
-            logger.info(f"EmbeddingJob: started with {len(self.image_list)} images")
+            logger.info(
+                f"EmbeddingJob[{self.job_id}]: started with {len(self.image_list)} images"
+            )
 
             if len(self.image_list) == 0:
                 with open(self.embeddings_path, "w") as f:

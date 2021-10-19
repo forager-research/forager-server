@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useReducer } from "react";
 import useInterval from "react-useinterval";
 import { InputGroup, InputGroupText, InputGroupAddon, Input } from "reactstrap";
 import {
@@ -35,15 +35,43 @@ const endpoints = fromPairs(
 );
 
 const DatasetList = () => {
+  const unfinishedJobsReducer = (state, action) => {
+    switch (action.type) {
+      case "ADD_JOB": {
+        let newState = { ...state };
+        if (!(action.datasetName in newState)) {
+          newState[action.datasetName] = {};
+        }
+        newState[action.datasetName][action.jobId] = true;
+        return newState;
+      }
+      case "REMOVE_JOB": {
+        let newState = { ...state };
+        if (
+          action.datasetName in newState &&
+          action.jobId in newState[action.datasetName]
+        ) {
+          delete newState[action.datasetName][action.jobId];
+        }
+        return newState;
+      }
+      default:
+        throw new Error();
+    }
+  };
+
   const [datasets, setDatasets] = useState([]);
-  const [unfinishedJobs, setUnfinishedJobs] = useState({});
+  const [unfinishedJobs, unfinishedJobsDispatch] = useReducer(
+    unfinishedJobsReducer,
+    {}
+  );
 
   async function getDatasetList() {
     const url = new URL(endpoints.getDatasets);
     let _datasets = await fetch(url, {
       method: "GET",
     }).then((r) => r.json());
-    setDatasets(_datasets.datasets);
+    setDatasets(_datasets.dataset_names);
   }
 
   useEffect(() => {
@@ -66,12 +94,20 @@ const DatasetList = () => {
       }).then((r) => r.json());
       for (const jobId in statuses) {
         if (statuses[jobId]["finished"]) {
+          unfinishedJobsDispatch({
+            type: "REMOVE_JOB",
+            datasetName,
+            jobId,
+          });
         } else {
-          jobs[datasetName].push(jobId);
+          unfinishedJobsDispatch({
+            type: "ADD_JOB",
+            datasetName,
+            jobId,
+          });
         }
       }
     }
-    setUnfinishedJobs(jobs);
   }
 
   useInterval(() => {
@@ -136,13 +172,20 @@ const DatasetList = () => {
             "resnet",
             "resnet"
           );
-          jobs[datasetName].push(jobId);
+          unfinishedJobsDispatch({
+            type: "ADD_JOB",
+            datasetName,
+            jobId,
+          });
         }
         if (createDatasetComputeClip) {
           const jobId = await computeEmbeddings(datasetName, "clip", "clip");
-          jobs[datasetName].push(jobId);
+          unfinishedJobsDispatch({
+            type: "ADD_JOB",
+            datasetName,
+            jobId,
+          });
         }
-        setUnfinishedJobs(jobs);
 
         getDatasetList();
         setCreateDatasetPopoverOpen(false);
