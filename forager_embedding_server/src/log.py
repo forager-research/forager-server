@@ -64,13 +64,13 @@ if os.environ.get("FORAGER_LOG_DIR"):
     LOGGING["loggers"]["sanic.access"]["handlers"].append("sanic_file")
 
 if os.environ.get("FORAGER_LOG_CONSOLE") == "1":
-    LOGGING["handers"]["console"] = {
+    LOGGING["handlers"]["console"] = {
         "class": "logging.StreamHandler",
         "level": "DEBUG",
         "formatter": "simple",
     }
     LOGGING["root"]["handlers"].append("console")
-    LOGGING["handers"]["sanic_console"] = {
+    LOGGING["handlers"]["sanic_console"] = {
         "class": "logging.StreamHandler",
         "level": "DEBUG",
         "formatter": "sanic",
@@ -84,5 +84,8 @@ def init_logging():
     logging.config.dictConfig(LOGGING)
     if os.environ.get("FORAGER_LOG_STD") == "1":
         logger = logging.getLogger("forager_embedding_server")
+        if os.environ.get("FORAGER_LOG_CONSOLE") == "1":
+            logger.critical("Can't both log to console and log std out/err.")
+            sys.exit(1)
         sys.stdout = LoggerWriter(logger.debug)
         sys.stderr = LoggerWriter(logger.warning)
