@@ -1,26 +1,10 @@
 import asyncio
-from collections import defaultdict
 import hashlib
-import os
-from pathlib import Path
-import shutil
 import time
 import uuid
-
-from typing import (
-    Any,
-    Awaitable,
-    Callable,
-    Dict,
-    DefaultDict,
-    Set,
-    TypeVar,
-    Optional,
-    MutableMapping,
-)
-
-import requests
-
+from collections import defaultdict
+from typing import (Any, Awaitable, Callable, DefaultDict, Dict,
+                    MutableMapping, Optional, Set, TypeVar)
 
 KT = TypeVar("KT")
 VT = TypeVar("VT")
@@ -112,17 +96,3 @@ def sha_encode(x: str):
     hash_object = hashlib.sha256(x.encode("utf-8"))
     hex_dig = hash_object.hexdigest()
     return str(hex_dig)
-
-
-def make_identifier(path):
-    return os.path.splitext(os.path.basename(path))[0]
-
-
-def load_remote_file(url):
-    filename = os.path.basename(url)
-    path = Path(filename)
-    if not path.exists():
-        print(f"Downloading {filename}...")
-        with requests.get(url, stream=True) as r, path.open("wb") as f:
-            shutil.copyfileobj(r.raw, f)
-    return filename
