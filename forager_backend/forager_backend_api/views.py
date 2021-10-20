@@ -1103,13 +1103,18 @@ def get_dataset_info(request, dataset_name):
     dataset = get_object_or_404(Dataset, name=dataset_name)
     num_train = dataset.datasetitem_set.filter(is_val=False).count()
     num_val = dataset.datasetitem_set.filter(is_val=True).count()
+    request_extended = request.GET.get("extended_info", "no") == "yes"
 
-    return JsonResponse(
-        {
-            "num_train": num_train,
-            "num_val": num_val,
-        }
-    )
+    resp = {
+        "num_train": num_train,
+        "num_val": num_val,
+    }
+
+    if request_extended:
+        resp["train_directory"] = dataset.train_directory
+        resp["val_directory"] = dataset.val_directory
+
+    return JsonResponse(resp)
 
 
 @api_view(["POST"])
