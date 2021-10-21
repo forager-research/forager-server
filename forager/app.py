@@ -217,18 +217,27 @@ class ForagerApp(object):
 
     async def _add_initial_dataset(self):
         # Download images
-        urls = demo_dataset_paths.get_paths()
+        dataset_name = "demo_dataset"
+        url = demo_dataset_paths.get_archive_path()
         output_directory = str(DEMO_DATASET_DIR)
         http_session = create_unlimited_aiohttp_session()
-        print("Downloading demo dataset images...")
+        print("Downloading demo dataset...")
         os.makedirs(output_directory, exist_ok=True)
-        await download_multiple(http_session, urls, output_directory)
-        # Download pre-computed embeddings
-        # Add to db
+        await download_multiple(http_session, [url], output_directory)
+        # Extract dataset
+        proc = await asyncio.create_subprocess_exec(
+            "tar",
+            "-xzf",
+            os.path.join(output_directory, os.path.basename(url)),
+            "-C",
+            output_directory,
+        )
+        await proc.wait()
+        # Add dataset
         request = dict(
-            dataset="demo_dataset",
-            train_images_directory=output_directory,
-            val_images_directory="",
+            dataset=dataset_name,
+            train_images_directory=os.path.join(output_directory, "train_images"),
+            val_images_directory=os.path.join(output_directory, "val_images"),
         )
         print("Adding demo dataset to Forager...")
         async with http_session.post(
@@ -237,6 +246,31 @@ class ForagerApp(object):
             timeout=1200,
         ) as response:
             print(response)
+        # Import embeddings
+        for name in ["resnet", "clip"]:
+            embeddings_dir = os.path.join(output_directory, "model_outputs", name)
+            image_list_path = os.path.join(embeddings_dir, "image_list.txt")
+            paths = []
+            with open(image_list_path, "r") as f:
+                # Remap the paths
+                paths = [
+                    os.path.join(output_directory, x.split(" ")[2].strip())
+                    for x in f.readlines()
+                ]
+            embeddings_path = os.path.join(embeddings_dir, "embeddings.bin")
+            params = {
+                "name": name,
+                "paths": paths,
+                "embeddings_path": str(embeddings_path),
+            }
+            async with http_session.post(
+                f"http://localhost:{BACKEND_PORT}/api/add_model_output/{dataset_name}",
+                json=params,
+            ) as response:
+                j = await response.json()
+                if j["status"] != "success":
+                    print("Error!")
+
         print("Success! Dataset added as 'demo_dataset'.")
 
     def run(self):
@@ -278,7 +312,11 @@ class ForagerApp(object):
                 print(f"{name} failed to start, aborting...")
                 sys.exit(1)
 
-        if self.is_first_run:
+        if (
+            self.is_first_run
+            and self.run_backend
+            and not (self.dev and self.run_frontend)
+        ):
             print(
                 "This is your first time running Forager. Would you like to download a test dataset? (Y/n) ",
                 end=" ",

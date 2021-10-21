@@ -35,6 +35,8 @@ def chunk_writer(url: str, output_directory: str):
 
 async def download_file(session: aiohttp.ClientSession, url: str, sink):
     async with session.get(url) as response:
+        if response.status != 200:
+            raise FileNotFoundError(f"Url {url} returned response: {response}")
         assert response.status == 200
         while True:
             chunk = await response.content.read(CHUNK_SIZE)
