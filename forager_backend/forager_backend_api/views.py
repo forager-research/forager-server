@@ -1104,7 +1104,7 @@ def get_dataset_info(request, dataset_name):
     dataset = get_object_or_404(Dataset, name=dataset_name)
     num_train = dataset.datasetitem_set.filter(is_val=False).count()
     num_val = dataset.datasetitem_set.filter(is_val=True).count()
-    request_extended = request.GET.get("extended_info", "no") == "yes"
+    request_extended = distutils.util.strtobool(request.GET.get("extended_info", "no"))
 
     resp = {
         "num_train": num_train,
@@ -1180,7 +1180,7 @@ def add_model_output(request, dataset_name):
 @api_view(["GET"])
 def get_model_outputs(request, dataset_name):
     dataset = get_object_or_404(Dataset, name=dataset_name)
-    request_extended = request.GET.get("extended_info", "no") == "yes"
+    request_extended = distutils.util.strtobool(request.GET.get("extended_info", "no"))
     model_output_objs = ModelOutput.objects.filter(dataset=dataset)
     return JsonResponse(
         {
