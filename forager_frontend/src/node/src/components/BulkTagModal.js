@@ -15,6 +15,7 @@ import { Range } from "rc-slider";
 
 import fromPairs from "lodash/fromPairs";
 import toPairs from "lodash/toPairs";
+import { endpoints } from "../constants";
 
 // TODO(mihirg): Combine with this same constant in other places
 const LABEL_VALUES = [
@@ -23,10 +24,6 @@ const LABEL_VALUES = [
   ["HARD_NEGATIVE", "Hard Negative"],
   ["UNSURE", "Unsure"],
 ];
-
-const endpoints = fromPairs(toPairs({
-  addAnnotationsToResultSet: 'add_annotations_to_result_set',
-}).map(([name, endpoint]) => [name, `${process.env.REACT_APP_SERVER_URL}/api/${endpoint}`]));
 
 const BulkTagModal = ({
   isOpen,
@@ -42,7 +39,9 @@ const BulkTagModal = ({
   const [isLoading, setIsLoading] = useState(false);
 
   const trimmedCategory = category.trim();
-  const numImages = Math.floor(resultSet.num_results * (selectedRange[1] - selectedRange[0]) / 100);
+  const numImages = Math.floor(
+    (resultSet.num_results * (selectedRange[1] - selectedRange[0])) / 100
+  );
   const isNew = !customModesByCategory.has(trimmedCategory);
 
   // Default values (clear every time form is opened)
@@ -67,19 +66,21 @@ const BulkTagModal = ({
 
     const res = await fetch(url, {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    }).then(res => res.json());
+    }).then((res) => res.json());
 
     if (res.created !== numImages) {
-      console.warn(`Bulk tag expected to create ${numImages}, actually created ${res.created}`);
+      console.warn(
+        `Bulk tag expected to create ${numImages}, actually created ${res.created}`
+      );
     }
     if (res.created > 0) {
       if (isNew) {
         categoryDispatch({
           type: "ADD_CATEGORY",
           category: trimmedCategory,
-        })
+        });
       }
       toggle();
     }
@@ -108,12 +109,16 @@ const BulkTagModal = ({
               spellcheck="false"
               disabled={isLoading}
             />
-            <FormText className="font-weight-normal" color={isNew ? "muted" : "danger"}>
-              We suggest you use a new category name so that this operation is easy to undo if necessary.
+            <FormText
+              className="font-weight-normal"
+              color={isNew ? "muted" : "danger"}
+            >
+              We suggest you use a new category name so that this operation is
+              easy to undo if necessary.
             </FormText>
           </FormGroup>
           <FormGroup>
-            {LABEL_VALUES.map(([value, name]) =>
+            {LABEL_VALUES.map(([value, name]) => (
               <span>
                 <a
                   href="#"
@@ -122,16 +127,22 @@ const BulkTagModal = ({
                     setSelectedValue(value);
                     e.preventDefault();
                   }}
-                  className={`rbt-token ${value} ${selectedValue === value ? "rbt-token-active" : ""}`}
+                  className={`rbt-token ${value} ${
+                    selectedValue === value ? "rbt-token-active" : ""
+                  }`}
                 >
                   {name.toLowerCase()}
                 </a>
-              </span>)
-            }
+              </span>
+            ))}
           </FormGroup>
           <div className="mb-1">
-            ...will be applied to range <b>{selectedRange[0]}%</b> to <b>{selectedRange[1]}%</b>
-            <span className="text-muted"> ({numImages} image{numImages === 1 ? "" : "s"}) </span>
+            ...will be applied to range <b>{selectedRange[0]}%</b> to{" "}
+            <b>{selectedRange[1]}%</b>
+            <span className="text-muted">
+              {" "}
+              ({numImages} image{numImages === 1 ? "" : "s"}){" "}
+            </span>
             of results
           </div>
           <div className="px-1">
@@ -147,16 +158,16 @@ const BulkTagModal = ({
         </Form>
       </ModalBody>
       <ModalFooter>
-        <Button
-          color="light"
-          onClick={toggle}
-          disabled={isLoading}
-        >Cancel</Button>{" "}
+        <Button color="light" onClick={toggle} disabled={isLoading}>
+          Cancel
+        </Button>{" "}
         <Button
           color="primary"
-          disabled={!!!(trimmedCategory) || numImages === 0 || isLoading}
+          disabled={!!!trimmedCategory || numImages === 0 || isLoading}
           onClick={() => setIsLoading(true)}
-        >Apply</Button>
+        >
+          Apply
+        </Button>
       </ModalFooter>
     </Modal>
   );

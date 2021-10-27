@@ -1,4 +1,10 @@
-import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 import {
   Button,
   Form,
@@ -15,7 +21,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faSort,
   faSortDown,
-  faSortUp
+  faSortUp,
 } from "@fortawesome/free-solid-svg-icons";
 
 import styled from "styled-components";
@@ -25,12 +31,7 @@ import fromPairs from "lodash/fromPairs";
 import toPairs from "lodash/toPairs";
 
 import { ConfirmModal } from "../components";
-
-const endpoints = fromPairs(toPairs({
-  updateModel: 'update_model',
-  deleteModel: 'delete_model',
-  getModels: "get_models",
-}).map(([name, endpoint]) => [name, `${process.env.REACT_APP_SERVER_URL}/api/${endpoint}`]));
+import { endpoints } from "../constants";
 
 const TableContainer = styled.div`
   height: 70vh;
@@ -44,13 +45,15 @@ const ModelManagementModal = ({
   modelInfo,
   setModelInfo,
   username,
-  isReadOnly
+  isReadOnly,
 }) => {
-
   // TODO: store with redux
   const [models, setModels] = useState([]);
 
-  const kOrderBy = fromPairs([["name", 0], ["timestamp", 1]]);
+  const kOrderBy = fromPairs([
+    ["name", 0],
+    ["timestamp", 1],
+  ]);
   const [orderBy, setOrderBy] = useState(kOrderBy.name);
   const [orderAscending, setOrderAscending] = useState(true);
 
@@ -63,9 +66,15 @@ const ModelManagementModal = ({
     const copy = arr.slice(0);
     const m = orderAscending ? 1 : -1;
     if (orderBy === kOrderBy.name) {
-      copy.sort((a, b) => m * (a.model.name.toLowerCase() < b.model.name.toLowerCase() ? -1 : 1));
+      copy.sort(
+        (a, b) =>
+          m * (a.model.name.toLowerCase() < b.model.name.toLowerCase() ? -1 : 1)
+      );
     } else if (orderBy === kOrderBy.timestamp) {
-      copy.sort((a, b) => m * (a.model.latest.timestamp < b.model.latest.timestamp ? -1 : 1));
+      copy.sort(
+        (a, b) =>
+          m * (a.model.latest.timestamp < b.model.latest.timestamp ? -1 : 1)
+      );
     }
 
     return copy;
@@ -111,12 +120,12 @@ const ModelManagementModal = ({
 
     const res = await fetch(url, {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    }).then(res => res.json());
+    }).then((res) => res.json());
 
     const newModelInfo = [...modelInfo];
-    newModelInfo[srcIdx].name = newName
+    newModelInfo[srcIdx].name = newName;
     setModelInfo(newModelInfo);
   };
 
@@ -132,9 +141,9 @@ const ModelManagementModal = ({
 
     const res = await fetch(url, {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    }).then(res => res.json());
+    }).then((res) => res.json());
 
     let newModelInfo = [...modelInfo];
     delete newModelInfo[models[idx].srcIdx];
@@ -143,20 +152,26 @@ const ModelManagementModal = ({
 
   useEffect(() => {
     const fn = async () => {
-      setModels(sortModels(modelInfo.map(
-        (model, i) => ({model, srcIdx: i})
-      ).map((obj, i) => {
-        if (!(obj.model.latest.timestamp instanceof Date)) {
-          obj.model.latest.timestamp = new Date(obj.model.latest.timestamp);
-        }
-        return obj;
-      })));
+      setModels(
+        sortModels(
+          modelInfo
+            .map((model, i) => ({ model, srcIdx: i }))
+            .map((obj, i) => {
+              if (!(obj.model.latest.timestamp instanceof Date)) {
+                obj.model.latest.timestamp = new Date(
+                  obj.model.latest.timestamp
+                );
+              }
+              return obj;
+            })
+        )
+      );
     };
     fn();
   }, [modelInfo]);
 
   useEffect(() => {
-    setModels(prev => sortModels(prev))
+    setModels((prev) => sortModels(prev));
   }, [orderBy, orderAscending]);
 
   const tableBodyFromModels = () => {
@@ -171,19 +186,26 @@ const ModelManagementModal = ({
                   value={obj.model.name}
                   disabled={isReadOnly}
                   onChange={(e) => setModelByIndex(e.target.value, i)}
-                  onKeyDown={(e) => { if (e.keyCode === 13) e.target.blur(); }}
+                  onKeyDown={(e) => {
+                    if (e.keyCode === 13) e.target.blur();
+                  }}
                   onBlur={(e) => updateModelByIndex(e, i, obj.srcIdx)}
                 />
               </td>
               <td>{obj.model.latest.epoch}</td>
               <td>
-                <ReactTimeAgo date={obj.model.latest.timestamp} timeStyle="mini"/> ago
+                <ReactTimeAgo
+                  date={obj.model.latest.timestamp}
+                  timeStyle="mini"
+                />{" "}
+                ago
               </td>
+              <td>{obj.model.with_output != null && <span>&#x2714;</span>}</td>
               <td>
-                {obj.model.with_output != null && <span>&#x2714;</span>}
-              </td>
-              <td>
-                <Button close disabled={isReadOnly} onClick={(e) => {
+                <Button
+                  close
+                  disabled={isReadOnly}
+                  onClick={(e) => {
                     setConfirmModel(obj.model.name);
                     setConfirmModelIdx(i);
                     toggleConfirmIsOpen();
@@ -196,7 +218,7 @@ const ModelManagementModal = ({
         })}
       </tbody>
     );
-  }
+  };
 
   return (
     <Modal
@@ -206,30 +228,44 @@ const ModelManagementModal = ({
       backdropTransition={{ timeout: 75 }}
       size="lg"
     >
-      <ModalHeader toggle={toggle}>
-        Manage Models
-      </ModalHeader>
+      <ModalHeader toggle={toggle}>Manage Models</ModalHeader>
       <ModalBody>
         <TableContainer className="pr-2">
           <Table hover borderless size="sm">
             <thead>
               <tr>
-                <th style={{cursor: "pointer"}} onClick={() => changeOrdering(kOrderBy.name)}>
-                  Model Name <FontAwesomeIcon icon={
-                    orderBy !== kOrderBy.name ? faSort : (orderAscending ? faSortUp : faSortDown)
-                  } />
+                <th
+                  style={{ cursor: "pointer" }}
+                  onClick={() => changeOrdering(kOrderBy.name)}
+                >
+                  Model Name{" "}
+                  <FontAwesomeIcon
+                    icon={
+                      orderBy !== kOrderBy.name
+                        ? faSort
+                        : orderAscending
+                        ? faSortUp
+                        : faSortDown
+                    }
+                  />
                 </th>
-                <th>
-                  Epoch
+                <th>Epoch</th>
+                <th
+                  style={{ cursor: "pointer" }}
+                  onClick={() => changeOrdering(kOrderBy.timestamp)}
+                >
+                  Timestamp{" "}
+                  <FontAwesomeIcon
+                    icon={
+                      orderBy !== kOrderBy.timestamp
+                        ? faSort
+                        : orderAscending
+                        ? faSortUp
+                        : faSortDown
+                    }
+                  />
                 </th>
-                <th style={{cursor: "pointer"}} onClick={() => changeOrdering(kOrderBy.timestamp)}>
-                  Timestamp <FontAwesomeIcon icon={
-                    orderBy !== kOrderBy.timestamp ? faSort : (orderAscending ? faSortUp : faSortDown)
-                  } />
-                </th>
-                <th>
-                  Has Output?
-                </th>
+                <th>Has Output?</th>
               </tr>
             </thead>
             {tableBodyFromModels()}
@@ -239,12 +275,28 @@ const ModelManagementModal = ({
         <ConfirmModal
           isOpen={confirmIsOpen}
           toggle={toggleConfirmIsOpen}
-          message={<span>Are you sure you want to delete the model <strong>{confirmModel}</strong>? This action cannot be undone.</span>}
-          confirmBtn={<Button color="danger" onClick={(e) => {
-            deleteModelByIndex(confirmModelIdx);
-            toggleConfirmIsOpen();
-          }}>Delete</Button>}
-          cancelBtn={<Button color="light" onClick={(e) => toggleConfirmIsOpen()}>Cancel</Button>}
+          message={
+            <span>
+              Are you sure you want to delete the model{" "}
+              <strong>{confirmModel}</strong>? This action cannot be undone.
+            </span>
+          }
+          confirmBtn={
+            <Button
+              color="danger"
+              onClick={(e) => {
+                deleteModelByIndex(confirmModelIdx);
+                toggleConfirmIsOpen();
+              }}
+            >
+              Delete
+            </Button>
+          }
+          cancelBtn={
+            <Button color="light" onClick={(e) => toggleConfirmIsOpen()}>
+              Cancel
+            </Button>
+          }
         />
       </ModalBody>
     </Modal>

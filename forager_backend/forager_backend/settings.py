@@ -13,8 +13,14 @@ https://docs.djangoproject.com/en/3.1/ref/settings/
 import json
 import os
 import os.path
+import socket
 import tempfile
 from pathlib import Path
+
+try:
+    HOSTNAME = socket.gethostname() + ".local"
+except:
+    HOSTNAME = "localhost"
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -46,7 +52,7 @@ SECRET_KEY = django_settings["secret_key"]
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = django_settings["allowed_hosts"]
+ALLOWED_HOSTS = django_settings["allowed_hosts"] + [HOSTNAME]
 
 
 # Application definition
@@ -181,9 +187,9 @@ frontend_port = django_settings.get("frontend_port", 4000)
 CORS_ALLOW_CREDENTIALS = True
 CORS_ORIGIN_WHITELIST = [
     "http://" + h + ((":" + str(frontend_port)) if frontend_port != 80 else "")
-    for h in django_settings["allowed_hosts"] + ["127.0.0.1", "localhost"]
+    for h in ALLOWED_HOSTS + ["127.0.0.1", "localhost"]
 ]
-CSRF_TRUSTED_ORIGINS = ["127.0.0.1", "localhost"] + ALLOWED_HOSTS
+CSRF_TRUSTED_ORIGINS = ALLOWED_HOSTS + ["127.0.0.1", "localhost"]
 SESSION_COOKIE_SAMESITE = "None"  # as a string
 SESSION_COOKIE_SECURE = True
 

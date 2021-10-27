@@ -13,6 +13,7 @@ import {
   Label,
 } from "reactstrap";
 import { ConfirmModal } from "./components";
+import { endpoints } from "./constants";
 import BounceLoader from "react-spinners/BounceLoader";
 import { Link } from "react-router-dom";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
@@ -22,19 +23,6 @@ import fromPairs from "lodash/fromPairs";
 import toPairs from "lodash/toPairs";
 
 const JOB_STATUS_INTERVAL = 5000;
-
-const endpoints = fromPairs(
-  toPairs({
-    getDatasets: "get_datasets",
-    createDataset: "create_dataset",
-    deleteDataset: "delete_dataset",
-    startInference: "start_model_inference",
-    inferenceStatus: "model_inference_status",
-  }).map(([name, endpoint]) => [
-    name,
-    `${process.env.REACT_APP_SERVER_URL}/api/${endpoint}`,
-  ])
-);
 
 const DatasetList = () => {
   const unfinishedJobsReducer = (state, action) => {
