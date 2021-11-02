@@ -1,6 +1,6 @@
 import asyncio
 import os.path
-from typing import List
+from typing import List, Optional
 
 import aiohttp
 from tqdm.asyncio import tqdm
@@ -23,8 +23,7 @@ def coroutine(func):
 
 
 @coroutine
-def chunk_writer(url: str, output_directory: str):
-    file_path = os.path.join(output_directory, os.path.basename(url))
+def chunk_writer(url: str, file_path: str):
 
     chunk = yield
     with open(file_path, "wb") as f:
@@ -33,17 +32,30 @@ def chunk_writer(url: str, output_directory: str):
             chunk = yield
 
 
-async def download_file(session: aiohttp.ClientSession, url: str, sink):
+async def download_file(
+    session: aiohttp.ClientSession, url: str, sink, display_tqdm: Optional[bool] = False
+):
     async with session.get(url) as response:
         if response.status != 200:
             raise FileNotFoundError(f"Url {url} returned response: {response}")
         assert response.status == 200
-        while True:
-            chunk = await response.content.read(CHUNK_SIZE)
-            if not chunk:
-                break
-            sink.send(chunk)
-    return url
+        if display_tqdm:
+            prog = tqdm(
+                total=response.content_length,
+                unit="bytes",
+                unit_scale=True,
+                unit_divisor=1024,
+            )
+        try:
+            while True:
+                chunk = await response.content.read(CHUNK_SIZE)
+                if not chunk:
+                    break
+                prog.update(len(chunk))
+                sink.send(chunk)
+        finally:
+            if display_tqdm:
+                prog.close()
 
 
 async def as_completed_with_concurrency(n, tasks):
@@ -57,6 +69,21 @@ async def as_completed_with_concurrency(n, tasks):
         yield x
 
 
+async def download_single(
+    session: aiohttp.ClientSession,
+    url: str,
+    output_path: str,
+    display_tqdm: Optional[bool] = False,
+):
+
+    await download_file(
+        session,
+        url,
+        sink=chunk_writer(url, output_path),
+        display_tqdm=display_tqdm,
+    )
+
+
 async def download_multiple(
     session: aiohttp.ClientSession,
     urls: List[str],
@@ -64,7 +91,13 @@ async def download_multiple(
     batch_size=16,
 ):
     download_futures = [
-        download_file(session, url, sink=chunk_writer(url, output_directory))
+        download_file(
+            session,
+            url,
+            sink=chunk_writer(
+                url, os.path.join(output_directory, os.path.basename(url))
+            ),
+        )
         for url in urls
     ]
     async for download_future in tqdm(

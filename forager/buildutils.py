@@ -167,7 +167,7 @@ def find_package_data(sdist=True):
 
 
 def find_package_deps():
-    install_deps = ["uvicorn", "sanic", "readchar", "tqdm"]
+    install_deps = ["uvicorn", "sanic", "readchar", "tqdm", "aiohttp"]
     for package_path in [
         BACKEND_DIR,
         EMBEDDING_SERVER_DIR,

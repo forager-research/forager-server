@@ -16,7 +16,7 @@ import readchar
 
 import forager.demo_dataset_paths as demo_dataset_paths
 from forager.buildutils import FRONTEND_DIR
-from forager.utils import create_unlimited_aiohttp_session, download_multiple
+from forager.utils import create_unlimited_aiohttp_session, download_single
 
 # Services:
 # 1. Start db (or not if sqlite?)
@@ -223,7 +223,12 @@ class ForagerApp(object):
         http_session = create_unlimited_aiohttp_session()
         print("Downloading demo dataset...")
         os.makedirs(output_directory, exist_ok=True)
-        await download_multiple(http_session, [url], output_directory)
+        await download_single(
+            http_session,
+            url,
+            os.path.join(output_directory, os.path.basename(url)),
+            display_tqdm=True,
+        )
         # Extract dataset
         proc = await asyncio.create_subprocess_exec(
             "tar",
@@ -245,7 +250,13 @@ class ForagerApp(object):
             json=request,
             timeout=1200,
         ) as response:
-            print(response)
+            if not response.ok:
+                print("Error creating dataset: ", response.reason)
+                response.raise_for_status()
+            j = await response.json()
+            if j["status"] != "success":
+                print("Error adding embeddings: ", j["reason"])
+                raise RuntimeError(j["reason"])
         # Import embeddings
         for name in ["resnet", "clip"]:
             embeddings_dir = os.path.join(output_directory, "model_outputs", name)
@@ -267,9 +278,13 @@ class ForagerApp(object):
                 f"http://localhost:{BACKEND_PORT}/api/add_model_output/{dataset_name}",
                 json=params,
             ) as response:
+                if not response.ok:
+                    print("Error creating dataset: ", response.reason)
+                    response.raise_for_status()
                 j = await response.json()
                 if j["status"] != "success":
-                    print("Error!")
+                    print("Error adding embeddings: ", j["reason"])
+                    raise RuntimeError(j["reason"])
 
         print("Success! Dataset added as 'demo_dataset'.")
 
@@ -317,6 +332,9 @@ class ForagerApp(object):
             and self.run_backend
             and not (self.dev and self.run_frontend)
         ):
+            if self.dev:
+                # Wait for 3 seconds for sanic output to resolve
+                time.sleep(3)
             print(
                 "This is your first time running Forager. Would you like to download a test dataset? (Y/n) ",
                 end=" ",
