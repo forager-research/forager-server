@@ -8,6 +8,7 @@ import operator
 import os
 import random
 import shutil
+import subprocess
 import time
 import uuid
 from collections import defaultdict, namedtuple
@@ -1103,13 +1104,18 @@ def get_dataset_info(request, dataset_name):
     dataset = get_object_or_404(Dataset, name=dataset_name)
     num_train = dataset.datasetitem_set.filter(is_val=False).count()
     num_val = dataset.datasetitem_set.filter(is_val=True).count()
+    request_extended = distutils.util.strtobool(request.GET.get("extended_info", "no"))
 
-    return JsonResponse(
-        {
-            "num_train": num_train,
-            "num_val": num_val,
-        }
-    )
+    resp = {
+        "num_train": num_train,
+        "num_val": num_val,
+    }
+
+    if request_extended:
+        resp["train_directory"] = dataset.train_directory
+        resp["val_directory"] = dataset.val_directory
+
+    return JsonResponse(resp)
 
 
 @api_view(["POST"])
@@ -1174,20 +1180,31 @@ def add_model_output(request, dataset_name):
 @api_view(["GET"])
 def get_model_outputs(request, dataset_name):
     dataset = get_object_or_404(Dataset, name=dataset_name)
+    request_extended = distutils.util.strtobool(request.GET.get("extended_info", "no"))
     model_output_objs = ModelOutput.objects.filter(dataset=dataset)
     return JsonResponse(
-        {"model_outputs": list(map(model_output_info, model_output_objs))}
+        {
+            "model_outputs": [
+                model_output_info(obj, extended=request_extended)
+                for obj in model_output_objs
+            ]
+        }
     )
 
 
-def model_output_info(model_output):
-    return {
+def model_output_info(model_output, extended=False):
+    info = {
         "id": model_output.pk,
         "name": model_output.name,
         "has_embeddings": model_output.embeddings_path != "",
         "has_scores": model_output.scores_path != "",
         "timestamp": model_output.last_updated,
     }
+    if extended:
+        info["embeddings_path"] = model_output.embeddings_path
+        info["scores_path"] = model_output.scores_path
+        info["image_list_path"] = model_output.image_list_path
+    return info
 
 
 @api_view(["DELETE"])

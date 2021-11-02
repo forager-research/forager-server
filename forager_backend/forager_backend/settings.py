@@ -149,7 +149,7 @@ if os.environ.get("FORAGER_LOG_DIR"):
     LOGGING["root"]["handlers"].append("file")
 
 if os.environ.get("FORAGER_LOG_CONSOLE") == "1":
-    LOGGING["handers"]["console"] = {
+    LOGGING["handlers"]["console"] = {
         "class": "logging.StreamHandler",
         "level": "DEBUG",
         "formatter": "simple",

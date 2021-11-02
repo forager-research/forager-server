@@ -7,14 +7,14 @@ from pathlib import Path
 import setuptools
 import toml
 
-NODE_DIR = Path("./frontend")
+ROOT_DIR = Path(os.path.dirname(__file__)).parent.resolve()
 
-FRONTEND_DIR = Path("./forager_frontend")
-FRONTEND_NODE_DIR = Path("./forager_frontend/src/node")
-BACKEND_DIR = Path("./forager_backend")
-EMBEDDING_SERVER_DIR = Path("./forager_embedding_server")
-KNN_DIR = Path("./forager_knn")
-CLIP_DIR = Path("./3rdparty/CLIP")
+FRONTEND_DIR = ROOT_DIR / "forager_frontend"
+FRONTEND_NODE_DIR = FRONTEND_DIR / "src/node"
+BACKEND_DIR = ROOT_DIR / "forager_backend"
+EMBEDDING_SERVER_DIR = ROOT_DIR / "forager_embedding_server"
+KNN_DIR = ROOT_DIR / "forager_knn"
+CLIP_DIR = ROOT_DIR / "3rdparty/CLIP"
 
 DEBUG_FRONTEND = False
 UPLOAD = True
@@ -96,6 +96,18 @@ def build_frontend(cmd):
     return CommandWrapper
 
 
+def package_files(root, cwd=None):
+    old_cwd = os.getcwd()
+    os.chdir(cwd)
+    paths = []
+    for (path, directories, filenames) in os.walk(root, followlinks=True):
+        for filename in filenames:
+            p = os.path.join(path, filename)
+            paths.append(p)
+    os.chdir(old_cwd)
+    return paths
+
+
 PACKAGES = [
     ("forager", "forager", ["pyproject.toml"]),
     ("forager_frontend", "forager_frontend/src/python", ["../../pyproject.toml"]),
@@ -105,7 +117,11 @@ PACKAGES = [
         ["../pyproject.toml"],
     ),
     ("forager_backend", "forager_backend/forager_backend", ["../pyproject.toml"]),
-    ("forager_embedding_server", "forager_embedding_server/src", ["../pyproject.toml"]),
+    (
+        "forager_embedding_server",
+        "forager_embedding_server/src",
+        ["../pyproject.toml"],
+    ),
     ("forager_knn", "forager_knn/src/forager_knn", ["../../pyproject.toml"]),
     ("clip", "3rdparty/CLIP/clip", ["pyproject.toml"]),
 ]
@@ -132,23 +148,14 @@ def find_package_dirs():
     return packages
 
 
-def package_files(root, cwd=None):
-    old_cwd = os.getcwd()
-    os.chdir(cwd)
-    paths = []
-    for (path, directories, filenames) in os.walk(root, followlinks=True):
-        for filename in filenames:
-            p = os.path.join(path, filename)
-            paths.append(p)
-    os.chdir(old_cwd)
-    return paths
-
-
 def find_package_data(sdist=True):
     data = defaultdict(list)
     data["forager_frontend"] += package_files(
         root="build",
-        cwd="forager_frontend/src/python/",
+        cwd=FRONTEND_DIR / "src/python",
+    )
+    data["forager_embedding_server"] += (
+        package_files(root="../terraform", cwd=EMBEDDING_SERVER_DIR / "src"),
     )
     data["clip"] += ["bpe_simple_vocab_16e6.txt.gz"]
     if sdist:
@@ -160,7 +167,7 @@ def find_package_data(sdist=True):
 
 
 def find_package_deps():
-    install_deps = ["uvicorn", "sanic"]
+    install_deps = ["uvicorn", "sanic", "readchar", "tqdm", "aiohttp"]
     for package_path in [
         BACKEND_DIR,
         EMBEDDING_SERVER_DIR,

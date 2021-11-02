@@ -1,3 +1,4 @@
+import os
 import os.path
 from dataclasses import dataclass
 from pathlib import Path
@@ -26,8 +27,16 @@ class CloudRunConfig:
 
 @dataclass
 class ClusterConfig:
-    TERRAFORM_MODULE_PATH = Path("./terraform").resolve()
+    TERRAFORM_MODULE_PATH = (
+        Path(__file__).parent.resolve()
+        / (
+            "../terraform"
+            if os.environ.get("FORAGER_DEV", "0") == "1"
+            else "./terraform"
+        )
+    ).resolve()
     REUSE_EXISTING = True
+    LOCAL_NFS_DIR = Path("~/.forager/local_nfs").expanduser().resolve()
     MOUNT_DIR = Path("~/.forager/mount").expanduser().resolve()
     CLEANUP_TIME = 20 * 60  # seconds (destroy cluster after idle for this long)
 

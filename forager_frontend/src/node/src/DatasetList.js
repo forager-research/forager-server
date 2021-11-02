@@ -12,6 +12,7 @@ import {
   FormGroup,
   Label,
 } from "reactstrap";
+import { ConfirmModal } from "./components";
 import BounceLoader from "react-spinners/BounceLoader";
 import { Link } from "react-router-dom";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
@@ -26,6 +27,7 @@ const endpoints = fromPairs(
   toPairs({
     getDatasets: "get_datasets",
     createDataset: "create_dataset",
+    deleteDataset: "delete_dataset",
     startInference: "start_model_inference",
     inferenceStatus: "model_inference_status",
   }).map(([name, endpoint]) => [
@@ -193,6 +195,29 @@ const DatasetList = () => {
     fn();
   };
 
+  const [confirmIsOpen, setConfirmIsOpen] = useState(false);
+  const [confirmDataset, setConfirmDataset] = useState(null);
+  const toggleConfirmIsOpen = (category) => setConfirmIsOpen(!confirmIsOpen);
+
+  const deleteDataset = (datasetName) => {
+    const fn = async () => {
+      const url = new URL(endpoints.deleteDataset);
+      const body = {
+        dataset: datasetName,
+      };
+      let resp = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }).then((r) => r.json());
+      if (resp.status !== "success") {
+        console.log(resp);
+      }
+      getDatasetList();
+    };
+    fn();
+  };
+
   return (
     <Container>
       <h2>Forager</h2>
@@ -224,6 +249,16 @@ const DatasetList = () => {
                     </td>
                     <td>{d.created_at}</td>
                     <td>{notReady ? "Setting up..." : "Ready"}</td>
+                    <td>
+                      <Button
+                        close
+                        onClick={(e) => {
+                          setConfirmDataset(d.name);
+                          toggleConfirmIsOpen();
+                          document.activeElement.blur();
+                        }}
+                      />
+                    </td>
                   </tr>
                 );
               })}
@@ -232,6 +267,32 @@ const DatasetList = () => {
         ) : (
           <p>No datasets available.</p>
         )}
+        <ConfirmModal
+          isOpen={confirmIsOpen}
+          toggle={toggleConfirmIsOpen}
+          message={
+            <span>
+              Are you sure you want to delete the dataset{" "}
+              <strong>{confirmDataset}</strong>? This action cannot be undone.
+            </span>
+          }
+          confirmBtn={
+            <Button
+              color="danger"
+              onClick={(e) => {
+                deleteDataset(confirmDataset);
+                toggleConfirmIsOpen();
+              }}
+            >
+              Delete
+            </Button>
+          }
+          cancelBtn={
+            <Button color="light" onClick={(e) => toggleConfirmIsOpen()}>
+              Cancel
+            </Button>
+          }
+        />
         <div className="create-dataset-container">
           <Button
             id="create-dataset-open-button"
