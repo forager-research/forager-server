@@ -17,6 +17,22 @@ import socket
 import tempfile
 from pathlib import Path
 
+
+def get_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # doesn't even have to be reachable
+        s.connect(("10.255.255.255", 1))
+        IP = s.getsockname()[0]
+    except Exception:
+        IP = "127.0.0.1"
+    finally:
+        s.close()
+    return IP
+
+
+LOCAL_IP = get_ip()
+
 try:
     HOSTNAME = socket.gethostname() + ".local"
 except:
@@ -52,7 +68,7 @@ SECRET_KEY = django_settings["secret_key"]
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = django_settings["allowed_hosts"] + [HOSTNAME]
+ALLOWED_HOSTS = django_settings["allowed_hosts"] + ["localhost", HOSTNAME, LOCAL_IP]
 
 
 # Application definition
