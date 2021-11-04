@@ -1,4 +1,5 @@
 import argparse
+import atexit
 import logging
 import os
 import queue
@@ -12,9 +13,18 @@ from multiprocessing import Process, Queue
 from pathlib import Path
 from typing import List, Tuple
 
+app = None
+
+
+def clean_up():
+    if app:
+        app.abort()
+
 
 def run_cmd(args):
     from forager.app import ForagerApp
+
+    global app
 
     app = ForagerApp()
     app.run()
@@ -23,6 +33,8 @@ def run_cmd(args):
 
 def dev_cmd(args):
     from forager.app import ForagerApp
+
+    global app
 
     run_frontend = False
     run_backend = False
@@ -40,6 +52,8 @@ def dev_cmd(args):
 
 
 def main():
+    atexit.register(clean_up)
+
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="subparser_name")
 

@@ -23,6 +23,8 @@ class LoggerWriter(IOBase):
             self._msg = ""
 
 
+DEFAULT_LEVEL = "DEBUG"
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": True,
@@ -37,7 +39,7 @@ LOGGING = {
         },
     },
     "handlers": {},
-    "root": {"handlers": [], "level": "DEBUG"},
+    "root": {"handlers": [], "level": DEFAULT_LEVEL},
     "loggers": {
         "sanic.access": {"handlers": [], "propagate": False},
         "sanic.error": {"handlers": [], "propagate": True},
@@ -51,14 +53,14 @@ if os.environ.get("FORAGER_LOG_DIR"):
     LOGGING["handlers"]["file"] = {
         "class": "logging.FileHandler",
         "filename": os.path.join(path, "embedding_server.log"),
-        "level": "DEBUG",
+        "level": DEFAULT_LEVEL,
         "formatter": "simple",
     }
     LOGGING["root"]["handlers"].append("file")
     LOGGING["handlers"]["sanic_file"] = {
         "class": "logging.FileHandler",
         "filename": os.path.join(path, "embedding_server.log"),
-        "level": "DEBUG",
+        "level": DEFAULT_LEVEL,
         "formatter": "sanic",
     }
     LOGGING["loggers"]["sanic.access"]["handlers"].append("sanic_file")
@@ -66,13 +68,13 @@ if os.environ.get("FORAGER_LOG_DIR"):
 if os.environ.get("FORAGER_LOG_CONSOLE") == "1":
     LOGGING["handlers"]["console"] = {
         "class": "logging.StreamHandler",
-        "level": "DEBUG",
+        "level": DEFAULT_LEVEL,
         "formatter": "simple",
     }
     LOGGING["root"]["handlers"].append("console")
     LOGGING["handlers"]["sanic_console"] = {
         "class": "logging.StreamHandler",
-        "level": "DEBUG",
+        "level": DEFAULT_LEVEL,
         "formatter": "sanic",
     }
     LOGGING["loggers"]["sanic.access"]["handlers"].append("sanic_console")

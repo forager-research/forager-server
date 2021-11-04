@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import concurrent
 import io
 import logging
 import math
@@ -15,6 +16,7 @@ import forager_embedding_server.log
 import forager_embedding_server.models as models
 import numpy as np
 import sanic.response as resp
+import uvloop
 from forager_embedding_server.ais import ais_singleiter, get_fscore
 from forager_embedding_server.config import CONFIG
 from forager_embedding_server.embedding_jobs import EmbeddingInferenceJob
@@ -45,8 +47,12 @@ logger = logging.getLogger(__name__)
 # GLOBALS
 
 # Start web server
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+executor = concurrent.futures.ProcessPoolExecutor(max_workers=8)
+
 app = Sanic(__name__, log_config=forager_embedding_server.log.LOGGING)
 app.update_config({"RESPONSE_TIMEOUT": CONFIG.SANIC_RESPONSE_TIMEOUT})
+app.update_config({"REQUEST_MAX_SIZE": 1024 * 1000000})  # 1 gigabyte
 
 
 BUILTIN_MODELS = {
@@ -107,7 +113,7 @@ async def start_embedding_job(request):
     )
 
     # Run job
-    embedding_job.start()
+    embedding_job.start(executor=executor)
 
     current_embedding_jobs[job_id] = embedding_job
 
@@ -747,6 +753,7 @@ async def query_active_validation(request):
 @app.listener("after_server_stop")
 async def cleanup(app, loop):
     print("Terminating:")
+    executor.shutdown(wait=False, cancel_futures=True)
     await _cleanup_clusters()
 
 
@@ -758,5 +765,9 @@ async def _cleanup_clusters():
         print(f"- killed {n} clusters")
 
 
+def main(host, port):
+    app.run(host=host, port=port)
+
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    main(host="0.0.0.0", port=5000)
