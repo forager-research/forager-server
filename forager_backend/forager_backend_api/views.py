@@ -14,7 +14,7 @@ import uuid
 from collections import defaultdict, namedtuple
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, NamedTuple, Tuple
+from typing import Dict, List, NamedTuple, Tuple, Union
 
 import requests
 from django.conf import settings
@@ -463,7 +463,9 @@ def get_boxes_from_annotations(annotations):
     return boxes_by_pk
 
 
-def filtered_images(request, dataset, exclude_pks=None) -> List[PkType]:
+def filtered_images(
+    request, dataset, exclude_pks=None, values=[]
+) -> Union[List[PkType], List[Tuple[PkType]]]:
     filt_start = time.time()
     if request.method == "POST":
         payload = json.loads(request.body)
@@ -497,7 +499,7 @@ def filtered_images(request, dataset, exclude_pks=None) -> List[PkType]:
         dataset_items = DatasetItem.objects.filter(dataset=dataset, is_val=is_val)
         if exclude_pks:
             dataset_items = dataset_items.exclude(pk__in=exclude_pks)
-        pks = dataset_items.values_list("pk", flat=True)
+        pks = dataset_items.values_list("pk", *values, flat=len(values) == 0)
     db_end = time.time()
 
     result = None
@@ -514,7 +516,7 @@ def filtered_images(request, dataset, exclude_pks=None) -> List[PkType]:
             dataset_items = dataset_items.filter(tag_sets_to_query(include_tags))
         dataset_items = dataset_items.exclude(tag_sets_to_query(exclude_tags))
 
-        result = dataset_items.values_list("pk", flat=True)
+        result = dataset_items.values_list("pk", *values, flat=len(values) == 0)
 
     db_tag_end = time.time()
     result = list(result[offset_to_return:end_to_return])
@@ -527,16 +529,15 @@ def filtered_images(request, dataset, exclude_pks=None) -> List[PkType]:
 
 
 def process_image_query_results(request, dataset, query_response):
-    filtered_pks = filtered_images(request, dataset)
+    filtered_pks = filtered_images(request, dataset, values=["identifier"])
     # TODO(mihirg): Eliminate this database call by directly returning pks from backend
-    dataset_items = DatasetItem.objects.filter(pk__in=filtered_pks)
-    dataset_items_by_identifier = {di.identifier: di for di in dataset_items}
+    pk_by_identifier = {ident: pk for pk, ident in filtered_pks}
 
     distances = []
     ordered_pks = []
     for r in query_response["results"]:
-        if r["identifier"] in dataset_items_by_identifier:
-            ordered_pks.append(dataset_items_by_identifier[r["identifier"]].pk)
+        if r["identifier"] in pk_by_identifier:
+            ordered_pks.append(pk_by_identifier[r["identifier"]])
             distances.append(r["dist"])
     return dict(
         pks=ordered_pks,
