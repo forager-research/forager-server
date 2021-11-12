@@ -1,10 +1,13 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { Typeahead } from "react-bootstrap-typeahead";
 
 const FeatureInput = ({ features, className, selected, setSelected, noAutofill, ...props }) => {
+  const autoFilled = useRef(false);
+
   useEffect(() => {
-    if (!noAutofill && selected === null && features.length > 0) {
-      setSelected(features[0]);
+    if (!autoFilled.current && !noAutofill && selected.length === 0 && features.length > 0) {
+      setSelected([features[0]]);
+      autoFilled.current = true;
     }
   }, [noAutofill, features]);
 
@@ -12,8 +15,10 @@ const FeatureInput = ({ features, className, selected, setSelected, noAutofill, 
     <Typeahead
       className={`typeahead-bar ${className || ""}`}
       options={features}
-      selected={selected ? [selected] : []}
-      onChange={s => setSelected(s.length === 0 ? null : s[0])}
+      selected={selected}
+      onChange={s => {
+        setSelected(s);
+      }}
       labelKey="name"
       clearButton
       {...props}
