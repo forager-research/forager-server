@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useReducer, useRef } from "react";
+import React, { useState, useEffect, useReducer, useRef, useContext } from "react";
 import useInterval from "react-useinterval";
 import { InputGroup, InputGroupText, InputGroupAddon, Input } from "reactstrap";
 import {
+  Navbar,
   Button,
   Container,
   Popover,
@@ -13,7 +14,8 @@ import {
   Label,
   Progress
 } from "reactstrap";
-import { ConfirmModal } from "./components";
+import { ConfirmModal, SignInModal } from "./components";
+import { UserContext } from "./UserContext"
 import { endpoints } from "./constants";
 import BounceLoader from "react-spinners/BounceLoader";
 import { Link } from "react-router-dom";
@@ -224,9 +226,56 @@ const DatasetList = () => {
     fn();
   };
 
+
+  const { username, setUsername } = useContext(UserContext);
+  const [isOpenSignIn, setIsOpenSignIn] = useState(false);
+  const toggleSignIn = () => setIsOpenSignIn(!isOpenSignIn);
+
+  useEffect(() => {
+    if (username === null || username === undefined || username.length === 0) {
+      setIsOpenSignIn(true);
+    }
+  }, []);
+
   return (
-    <Container>
+      <div>
+
+      <Navbar>
+        <Container fluid>
+      <span>
       <h2>Forager</h2>
+      </span>
+      <span>
+              {username ? (
+                <>
+                  {username} (
+                  <a
+                    href="#"
+                    onClick={(e) => {
+                      setUsername("");
+                      setIsOpenSignIn(true);
+                      e.preventDefault();
+                    }}
+                  >
+                    Sign out
+                  </a>
+                  )
+                </>
+              ) : (
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    setIsOpenSignIn(true);
+                    e.preventDefault();
+                  }}
+                >
+                  Sign in
+                </a>
+              )}
+      </span>
+        </Container>
+    </Navbar>
+    <Container>
       <div>
         <h3>Datasets</h3>
         {datasets.length > 0 ? (
@@ -417,7 +466,9 @@ const DatasetList = () => {
           </Popover>
         </div>
       </div>
+      <SignInModal isOpen={isOpenSignIn} toggle={toggleSignIn}/>
     </Container>
+      </div>
   );
 };
 
