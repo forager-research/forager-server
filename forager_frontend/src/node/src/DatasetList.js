@@ -16,7 +16,6 @@ import {
 } from "reactstrap";
 import { ConfirmModal, SignInModal } from "./components";
 import { UserContext } from "./UserContext"
-import { endpoints } from "./constants";
 import BounceLoader from "react-spinners/BounceLoader";
 import { Link } from "react-router-dom";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";

@@ -63,7 +63,6 @@ import {
   TrainPanel,
 } from "./components";
 import { UserContext } from "./UserContext";
-import { endpoints } from "./constants";
 
 var disjointSet = require("disjoint-set");
 
