@@ -114,7 +114,7 @@ def run_embedding_server(q, dev):
 
         print("Running embedding server...")
         q.put([True])
-        app.app.run(host="0.0.0.0", port=EMBEDDING_SERVER_PORT)
+        app.main(host="0.0.0.0", port=EMBEDDING_SERVER_PORT)
     except Exception:
         print(traceback.format_exc())
     finally:
@@ -213,9 +213,9 @@ class ForagerApp(object):
         else:
             self.is_first_run = False
 
-    def _run_server(self, fn, dev: bool = False) -> Tuple[Process, Queue]:
+    def _run_server(self, fn, dev: bool = False, daemon=True) -> Tuple[Process, Queue]:
         q = Queue()
-        p = Process(target=fn, args=(q, dev), daemon=True)
+        p = Process(target=fn, args=(q, dev), daemon=daemon)
         p.start()
         return p, q
 
@@ -296,20 +296,22 @@ class ForagerApp(object):
         LOG_DIR.mkdir(parents=True, exist_ok=True)
         print("Starting up Forager...")
 
-        self.services: List[Tuple[str, Queue]] = []
+        self.services: List[Tuple[str, Queue, Process]] = []
 
         if self.run_backend:
             web_server_wd = ""
             self.web_server, self.web_server_q = self._run_server(
                 run_server, dev=self.dev
             )
-            self.services.append(("Backend", self.web_server_q))
+            self.services.append(("Backend", self.web_server_q, self.web_server))
 
             embedding_server_wd = ""
             self.embedding_server, self.embedding_server_q = self._run_server(
-                run_embedding_server, self.dev
+                run_embedding_server, self.dev, daemon=False
             )
-            self.services.append(("Compute", self.embedding_server_q))
+            self.services.append(
+                ("Compute", self.embedding_server_q, self.embedding_server)
+            )
 
         if self.run_frontend:
             file_server_wd = ""
@@ -317,12 +319,12 @@ class ForagerApp(object):
                 self.file_server, self.file_server_q = self._run_server(
                     dev_frontend, dev=True
                 )
-                self.services.append(("Frontend", self.file_server_q))
+                self.services.append(("Frontend", self.file_server_q, self.file_server))
             else:
                 self.file_server, self.file_server_q = self._run_server(run_frontend)
-                self.services.append(("Frontend", self.file_server_q))
+                self.services.append(("Frontend", self.file_server_q, self.file_server))
 
-        for idx, (name, q) in enumerate(self.services):
+        for idx, (name, q, _) in enumerate(self.services):
             started = q.get()
             if started:
                 print(f"({idx+1}/{len(self.services)}) {name} started.")
@@ -370,7 +372,7 @@ class ForagerApp(object):
         self.service_running = [True for _ in self.services]
         self.services_left = len(self.services)
         while self.services_left > 0:
-            for idx, (name, q) in enumerate(self.services):
+            for idx, (name, q, _) in enumerate(self.services):
                 if not self.service_running[idx]:
                     continue
                 try:
@@ -388,3 +390,9 @@ class ForagerApp(object):
         self.web_server.join()
         self.embedding_server.join()
         self.file_server.join()
+
+    def abort(self):
+        for service in self.services:
+            service[2].terminate()
+
+        self.services = []

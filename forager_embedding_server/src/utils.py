@@ -1,4 +1,5 @@
 import asyncio
+import functools
 import hashlib
 import time
 import uuid
@@ -8,6 +9,20 @@ from typing import (Any, Awaitable, Callable, DefaultDict, Dict,
 
 KT = TypeVar("KT")
 VT = TypeVar("VT")
+
+
+def trace_unhandled_exceptions(func):
+    @functools.wraps(func)
+    def wrapped_func(*args, **kwargs):
+        result = None
+        try:
+            result = func(*args, **kwargs)
+        except:
+            print("Exception in " + func.__name__)
+            traceback.print_exc()
+        return result
+
+    return wrapped_func
 
 
 class CleanupDict(MutableMapping[KT, VT]):

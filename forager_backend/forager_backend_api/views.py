@@ -1351,9 +1351,15 @@ def start_model_inference(request):
         response_data = r.json()
         job_id = response_data["job_id"]
 
-    except requests.exceptions.RequestException:  # This is the correct syntax
+    except requests.exceptions.RequestException as e:  # This is the correct syntax
         return JsonResponse(
-            {"status": "failure", "reason": "Failed to create embeddings for dataset."},
+            {
+                "status": "failure",
+                "reason": "Failed to create embeddings for dataset: "
+                + e.response.reason
+                if e.response
+                else str(e),
+            },
             status=500,
         )
 

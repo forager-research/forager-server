@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useReducer } from "react";
+import React, { useState, useEffect, useReducer, useRef } from "react";
 import useInterval from "react-useinterval";
 import { InputGroup, InputGroupText, InputGroupAddon, Input } from "reactstrap";
 import {
@@ -11,6 +11,7 @@ import {
   Form,
   FormGroup,
   Label,
+  Progress
 } from "reactstrap";
 import { ConfirmModal } from "./components";
 import { endpoints } from "./constants";
@@ -32,7 +33,7 @@ const DatasetList = () => {
         if (!(action.datasetName in newState)) {
           newState[action.datasetName] = {};
         }
-        newState[action.datasetName][action.jobId] = true;
+        newState[action.datasetName][action.jobId] = action.status;
         return newState;
       }
       case "REMOVE_JOB": {
@@ -68,33 +69,48 @@ const DatasetList = () => {
     getDatasetList();
   }, []);
 
-  async function getJobStatus() {
-    for (const datasetName in unfinishedJobs) {
-      if (Object.keys(unfinishedJobs[datasetName]).length === 0) continue;
+  const controllerRef = useRef();
 
-      const url = new URL(endpoints.inferenceStatus);
-      let params = {
-        job_ids: Object.keys(unfinishedJobs[datasetName]),
-      };
-      url.search = new URLSearchParams(params).toString();
-      let statuses = await fetch(url, {
-        method: "GET",
-      }).then((r) => r.json());
-      for (const jobId in statuses) {
-        if (statuses[jobId]["finished"]) {
-          unfinishedJobsDispatch({
-            type: "REMOVE_JOB",
-            datasetName,
-            jobId,
-          });
-        } else {
-          unfinishedJobsDispatch({
-            type: "ADD_JOB",
-            datasetName,
-            jobId,
-          });
+  async function getJobStatus() {
+    if (controllerRef.current) {
+      controllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    controllerRef.current = controller;
+
+    try {
+      for (const datasetName in unfinishedJobs) {
+        if (Object.keys(unfinishedJobs[datasetName]).length === 0) continue;
+
+        const url = new URL(endpoints.inferenceStatus);
+        let params = {
+          job_ids: Object.keys(unfinishedJobs[datasetName]),
+        };
+        url.search = new URLSearchParams(params).toString();
+        let statuses = await fetch(url, {
+          method: "GET",
+          signal: controllerRef.current?.signal
+        }).then((r) => r.json());
+        for (const jobId in statuses) {
+          if (statuses[jobId]["finished"]) {
+            console.log("remove job");
+            unfinishedJobsDispatch({
+              type: "REMOVE_JOB",
+              datasetName,
+              jobId,
+            });
+          } else {
+            unfinishedJobsDispatch({
+              type: "ADD_JOB",
+              datasetName,
+              jobId,
+              status: statuses[jobId]
+            });
+          }
         }
       }
+      controllerRef.current = null;
+    } catch (e) {
     }
   }
 
@@ -164,6 +180,7 @@ const DatasetList = () => {
             type: "ADD_JOB",
             datasetName,
             jobId,
+            status: null
           });
         }
         if (createDatasetComputeClip) {
@@ -172,6 +189,7 @@ const DatasetList = () => {
             type: "ADD_JOB",
             datasetName,
             jobId,
+            status: null
           });
         }
 
@@ -223,7 +241,29 @@ const DatasetList = () => {
             <tbody>
               {datasets.map((d) => {
                 const notReady =
-                  d.name in unfinishedJobs && unfinishedJobs[d.name].length > 0;
+                  d.name in unfinishedJobs && Object.keys(unfinishedJobs[d.name]).length > 0;
+                let timeLeft = 0;
+                let prog = 200;
+                if (notReady) {
+                  for (const key of Object.keys(unfinishedJobs[d.name])) {
+                    if (unfinishedJobs[d.name][key] == null) continue;
+
+                    if ("progress" in unfinishedJobs[d.name][key]["status"]) {
+                      prog = Math.min(prog, (unfinishedJobs[d.name][key]["status"]["progress"]["n_processed"] /
+                        unfinishedJobs[d.name][key]["status"]["progress"]["n_total"])
+                        * 100);
+                    }
+                    timeLeft = Math.max(timeLeft, unfinishedJobs[d.name][key]["status"]["time_left"]);
+                  }
+                }
+                if (prog === 200) {
+                  prog = 0;
+                }
+                if (timeLeft === 0) {
+                  timeLeft = "calculating...";
+                } else {
+                  timeLeft = new Date(timeLeft * 1000).toISOString().substr(11, 8);
+                }
                 return (
                   <tr key={d.name}>
                     <td>
@@ -236,7 +276,15 @@ const DatasetList = () => {
                       )}
                     </td>
                     <td>{d.created_at}</td>
-                    <td>{notReady ? "Setting up..." : "Ready"}</td>
+                    <td>{notReady ?
+                         <>
+                           <div>
+                             <div className="text-center">
+                               Time left: {timeLeft}
+                             </div>
+                             <Progress value={prog}/>
+                           </div>
+                         </>: "Ready"}</td>
                     <td>
                       <Button
                         close

@@ -3,12 +3,11 @@ from typing import List, Optional, Tuple
 import clip
 import numpy as np
 import torch
+import torch.nn as nn
 import torchvision.models.resnet
 import torchvision.transforms
 from forager_embedding_server.config import CONFIG
 from PIL import Image
-
-torch.set_num_threads(1)
 
 
 class EmbeddingModel:
@@ -24,28 +23,36 @@ class EmbeddingModel:
 
 class CLIP(EmbeddingModel):
     def __init__(self):
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model, self.preprocess = clip.load(
-            CONFIG.MODELS.CLIP.MODEL_NAME, device="cpu", jit=True
+            CONFIG.MODELS.CLIP.MODEL_NAME, device=self.device, jit=True
         )
 
-    def output_dim(self):
+        if torch.cuda.is_available():
+            self.model.to(self.device)
+            # self.model = nn.DataParallel(self.model)
+
+    @classmethod
+    def output_dim(cls):
         return 512
 
     @torch.no_grad()
     def embed_text(self, text, *args, **kwargs):
         text = clip.tokenize(text)
+        text.to(self.device)
         text_features = self.model.encode_text(text)
         text_features /= text_features.norm(dim=-1, keepdim=True)
-        return text_features.numpy()
+        return text_features.cpu().numpy()
 
     @torch.no_grad()
     def embed_images(self, images, *args, **kwargs):
         preprocessed_images = torch.stack(
             [self.preprocess(Image.fromarray(img)) for img in images]
         )
+        preprocessed_images.to(self.device)
         image_features = self.model.encode_image(preprocessed_images)
         image_features /= image_features.norm(dim=-1, keepdim=True)
-        return image_features.numpy()
+        return image_features.cpu().numpy()
 
 
 class TorchvisionResNetFeatureModel(torchvision.models.resnet.ResNet):
@@ -81,12 +88,20 @@ class ResNet(EmbeddingModel):
         self.model.load_state_dict(state_dict)
         self.model.eval()
 
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if torch.cuda.is_available():
+            self.model.to(self.device)
+            self.model = nn.DataParallel(self.model)
+
         # Setup input pipeline
         self.pixel_mean = torch.tensor([0.485, 0.456, 0.406])[:, None, None]
         self.pixel_std = torch.tensor([0.229, 0.224, 0.225])[:, None, None]
+        self.pixel_mean.to(self.device)
+        self.pixel_std.to(self.device)
         self.input_format = "RGB"
 
-    def output_dim(self, layer: str = "res4"):
+    @classmethod
+    def output_dim(cls, layer: str = "res4"):
         return {"res4": 1024, "res5": 2048, "linear": 1000}[layer]
 
     @torch.no_grad()
@@ -114,6 +129,7 @@ class ResNet(EmbeddingModel):
                 )
 
             image = torch.as_tensor(np.asarray(image), dtype=torch.float32)  # -> tensor
+            image.to(self.device)
             image = image.permute(2, 0, 1)  # HWC -> CHW
             if self.input_format == "BGR":
                 image = torch.flip(image, dims=(0,))  # RGB -> BGR
@@ -125,6 +141,7 @@ class ResNet(EmbeddingModel):
         # Input: NCHW
         # Output: {'res4': NCHW, 'res5': NCHW}
         inputs = torch.stack(converted_images, dim=0)
+        inputs.to(self.device)
         output_dict = self.model(inputs)
 
-        return torch.mean(output_dict[layer], dim=[2, 3]).numpy()
+        return torch.mean(output_dict[layer], dim=[2, 3]).cpu().numpy()

@@ -21,6 +21,7 @@ scipy = "^1.6.0"
 fastcluster = "==1.1.28"
 torch = "^1.9"
 torchvision = "^0.10"
+uvloop = "*"
 
 
 [tool.poetry.dev-dependencies]
