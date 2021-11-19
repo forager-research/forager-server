@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useReducer, useRef } from "react";
+import React, { useState, useEffect, useMemo, useReducer, useRef, useContext } from "react";
 import useInterval from "react-useinterval";
 import {
   Container,
@@ -62,7 +62,7 @@ import {
   LabelPanel,
   TrainPanel,
 } from "./components";
-import { endpoints } from "./constants";
+import { UserContext } from "./UserContext";
 
 var disjointSet = require("disjoint-set");
 
@@ -98,18 +98,18 @@ const BUILT_IN_MODES = [
 ];
 
 function MainHeader(props) {
-  const [loginIsOpen, setLoginIsOpen] = useState(false);
-  const [loginUsername, setLoginUsername] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
+  const [isOpenSignIn, setIsOpenSignIn] = useState(false);
+  const toggleSignIn = () => setIsOpenSignIn(!isOpenSignIn);
+
+  useEffect(() => {
+    if (username === null || username === undefined || username.length === 0) {
+      setIsOpenSignIn(true);
+    }
+  }, []);
+
+
   let username = props.username;
   let setUsername = props.setUsername;
-
-  const login = (e) => {
-    if (loginUsername !== undefined && loginPassword === "forager")
-      setUsername(loginUsername.trim());
-    setLoginIsOpen(false);
-    e.preventDefault();
-  };
 
   //
   // TAG MANAGEMENT MODAL
@@ -158,13 +158,8 @@ function MainHeader(props) {
   return (
     <>
       <SignInModal
-        isOpen={loginIsOpen}
-        toggle={() => setLoginIsOpen(false)}
-        loginUsername={loginUsername}
-        loginPassword={loginPassword}
-        setLoginUsername={setLoginUsername}
-        setLoginPassword={setLoginPassword}
-        login={login}
+        isOpen={isOpenSignIn}
+        toggle={toggleSignIn}
       />
       <TagManagementModal
         isOpen={tagManagementIsOpen}
@@ -245,19 +240,12 @@ function MainHeader(props) {
           </span>
           <span>
             <Nav navbar>
-              {modes.map(({ id, label }) => (
-                <NavItem active={mode === id}>
-                  <NavLink
-                    href="#"
-                    onClick={(e) => {
-                      setMode(id);
-                      e.preventDefault();
-                    }}
-                  >
-                    {label}
-                  </NavLink>
-                </NavItem>
-              ))}
+              {modes.map(({ id, label }) => <NavItem active={mode === id}>
+                <NavLink href="#" onClick={(e) => {
+                  setMode(id);
+                  e.preventDefault();
+                }}>{label}</NavLink>
+              </NavItem>)}
             </Nav>
           </span>
           <div>
@@ -283,6 +271,7 @@ function MainHeader(props) {
                     href="#"
                     onClick={(e) => {
                       setUsername("");
+                      setIsOpenSignIn(true);
                       e.preventDefault();
                     }}
                   >
@@ -294,9 +283,7 @@ function MainHeader(props) {
                 <a
                   href="#"
                   onClick={(e) => {
-                    setLoginUsername("");
-                    setLoginPassword("");
-                    setLoginIsOpen(true);
+                    setIsOpenSignIn(true);
                     e.preventDefault();
                   }}
                 >
@@ -680,7 +667,7 @@ function OrderingModeSelector(p) {
               svmPosTags.length === 0 ||
               (svmNegTags.length === 0 && !svmAugmentNegs) ||
               svmIsTraining ||
-              svmModel === null
+              (svmModel === null || svmModel.length === 0)
             }
             className="mt-2 mb-1 w-100"
           >
@@ -867,13 +854,7 @@ const App = () => {
   // USER AUTHENTICATION
   //
 
-  const [username, setUsername_] = useState(
-    window.localStorage.getItem("foragerUsername") || ""
-  );
-  const setUsername = (u) => {
-    window.localStorage.setItem("foragerUsername", u);
-    setUsername_(u);
-  };
+  const { username, setUsername } = useContext(UserContext);
 
   //
   // CLUSTER FOCUS MODAL
@@ -1053,7 +1034,7 @@ const App = () => {
   const [orderingMode, setOrderingMode] = useState(orderingModes[0].id);
   const [orderByClusterSize, setOrderByClusterSize] = useState(true);
   const [clusteringStrength, setClusteringStrength] = useState(20);
-  const [clusteringModel, setClusteringModel] = useState(null);
+  const [clusteringModel, setClusteringModel] = useState([]);
 
   const [scoreRange, setScoreRange] = useState([0, 100]);
 
@@ -1064,7 +1045,7 @@ const App = () => {
   const [svmNegTags, setSvmNegTags] = useState([]);
   const [svmAugmentIncludeTags, setSvmAugmentIncludeTags] = useState([]);
   const [svmAugmentExcludeTags, setSvmAugmentExcludeTags] = useState([]);
-  const [svmModel, setSvmModel] = useState(null);
+  const [svmModel, setSvmModel] = useState([]);
   const [svmIsTraining, setSvmIsTraining] = useState(false);
   const [trainedSvmData, setTrainedSvmData] = useState(null);
 
@@ -1096,7 +1077,7 @@ const App = () => {
       augment_negs: svmAugmentNegs,
       include: svmAugmentIncludeTags.map((t) => `${t.category}:${t.value}`),
       exclude: svmAugmentExcludeTags.map((t) => `${t.category}:${t.value}`),
-      model_output_id: svmModel.id,
+      model_output_id: svmModel[0].id,
     };
     url.search = new URLSearchParams(body).toString();
     const svmData = await fetch(url, {
@@ -1141,7 +1122,7 @@ const App = () => {
     } else if (orderingMode === "svm") {
       url = new URL(`${endpoints.querySvm}/${datasetName}`);
       body.svm_vector = trainedSvmData.svm_vector;
-      body.model_output_id = svmModel.id;
+      body.model_output_id = svmModel[0].id;
     } else if (orderingMode === "dnn") {
       url = new URL(`${endpoints.queryRanking}/${datasetName}`);
       body.model_output_id = rankingModel.id;
@@ -1179,7 +1160,7 @@ const App = () => {
 
     let url = new URL(`${endpoints.getResults}/${datasetName}`);
     let params = {
-      clustering_model_output_id: clusteringModel.id,
+      clustering_model_output_id: clusteringModel[0].id,
       result_set_id: queryResultSet.id,
       offset: page * PAGE_SIZE,
       num: PAGE_SIZE,
@@ -1238,11 +1219,11 @@ const App = () => {
   }, [isLoading]);
 
   useEffect(() => {
-    if (clusteringModel !== null) {
+    if (clusteringModel.length !== 0) {
       setPageIsLoading(true);
       getPage().finally(() => setPageIsLoading(false));
     }
-  }, [page, queryResultSet, clusteringModel]);
+  }, [page, queryResultSet, JSON.toString(clusteringModel)]);
 
   const setSubset = (subset) => {
     setSubset_(subset);

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useContext, useState } from "react";
 import {
   Button,
   Form,
@@ -7,22 +7,29 @@ import {
   Modal,
   ModalBody
 } from "reactstrap";
+import { UserContext } from "../UserContext"
 
 const SignInModal = ({
   isOpen,
   toggle,
-  loginUsername,
-  loginPassword,
-  setLoginUsername,
-  setLoginPassword,
-  login
 }) => {
+  const { username, setUsername } = useContext(UserContext);
+  const [ loginUsername, setLoginUsername ] = useState("");
+
+  const login = () => {
+    if (loginUsername !== null && loginUsername !== undefined && loginUsername.length > 0) {
+      setUsername(loginUsername);
+      toggle();
+    }
+  }
+
   return (
     <Modal
       isOpen={isOpen}
       toggle={toggle}
       modalTransition={{ timeout: 25 }}
       backdropTransition={{ timeout: 75 }}
+      backdrop="static"
     >
       <ModalBody>
         <div className="m-xl-4 m-3">
@@ -40,15 +47,7 @@ const SignInModal = ({
               />
             </FormGroup>
             <FormGroup>
-              <Input
-                type="password"
-                placeholder="Password"
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-              />
-            </FormGroup>
-            <FormGroup>
-              <Button block color="primary" type="submit" onClick={login}>Sign in</Button>
+              <Button block color="primary" type="button" onClick={login}>Sign in</Button>
             </FormGroup>
           </Form>
         </div>
@@ -58,3 +57,5 @@ const SignInModal = ({
 }
 
 export default SignInModal;
+
+

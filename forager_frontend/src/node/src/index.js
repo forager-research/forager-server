@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import DatasetList from './DatasetList';
 import App from './App';
+import { UserProvider } from './UserContext';
 
 import {
   BrowserRouter as Router,
@@ -16,12 +17,14 @@ TimeAgo.addDefaultLocale(en);
 
 ReactDOM.render(
   <React.StrictMode>
-    <Router>
-      <Switch>
-        <Route exact path="/" children={<DatasetList />} />
-        <Route path="/:datasetName" children={<App />} />
-      </Switch>
-    </Router>
+    <UserProvider>
+      <Router>
+        <Switch>
+          <Route exact path="/" children={<DatasetList />} />
+          <Route path="/:datasetName" children={<App />} />
+        </Switch>
+      </Router>
+    </UserProvider>
   </React.StrictMode>,
   document.getElementById('root')
 );
