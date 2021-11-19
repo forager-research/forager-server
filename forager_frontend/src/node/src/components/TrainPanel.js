@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import useInterval from 'react-useinterval';
+import useInterval from "react-useinterval";
 import {
   Button,
   Input,
@@ -8,7 +8,7 @@ import {
   Collapse,
   Label,
   Form,
-  CustomInput
+  CustomInput,
 } from "reactstrap";
 import { ReactSVG } from "react-svg";
 
@@ -17,25 +17,13 @@ import toPairs from "lodash/toPairs";
 
 import CategoryInput from "./CategoryInput";
 import FeatureInput from "./FeatureInput";
+import { endpoints } from "../constants";
 
 var dateFormat = require("dateformat");
 
-const STATUS_POLL_INTERVAL = 3000;  // ms
+const STATUS_POLL_INTERVAL = 3000; // ms
 
-const dnns = [
-  {id: "dnn", label: "DNN w/ BG Splitting"},
-];
-
-const endpoints = fromPairs(toPairs({
-  getModels: "get_models",
-  trainModel: "train_model",
-  modelStatus: "model",
-  modelInference: "model_inference",
-  modelInferenceStatus: "model_inference_status",
-  stopModelInference: "stop_model_inference",
-  startCluster: "start_cluster",
-  clusterStatus: "cluster",
-}).map(([name, endpoint]) => [name, `${process.env.REACT_APP_SERVER_URL}/api/${endpoint}`]));
+const dnns = [{ id: "dnn", label: "DNN w/ BG Splitting" }];
 
 const TrainPanel = ({
   datasetName,
@@ -71,7 +59,7 @@ const TrainPanel = ({
     const url = new URL(`${endpoints.startCluster}`);
     var clusterResponse = await fetch(url, {
       method: "POST",
-    }).then(r => r.json());
+    }).then((r) => r.json());
     setClusterId(clusterResponse.cluster_id);
     setClusterReady(false);
   };
@@ -80,7 +68,7 @@ const TrainPanel = ({
     const url = new URL(`${endpoints.clusterStatus}/${clusterId}`);
     const clusterStatus = await fetch(url, {
       method: "GET",
-    }).then(r => r.json());
+    }).then((r) => r.json());
     setClusterReady(clusterStatus.ready);
   };
 
@@ -91,7 +79,8 @@ const TrainPanel = ({
 
   useInterval(
     getClusterStatus,
-    clusterId && !clusterReady ? STATUS_POLL_INTERVAL : null);
+    clusterId && !clusterReady ? STATUS_POLL_INTERVAL : null
+  );
 
   //
   // TRAINING
@@ -104,49 +93,60 @@ const TrainPanel = ({
   const [trainingTimeLeft, setTrainingTimeLeft] = useState();
   const [trainingTensorboardUrl, setTrainingTensorboardUrl] = useState();
   const [dnnKwargs, setDnnKwargs] = useState({
-    "initial_lr": 0.01,
-    "endlr": 0.0,
-    "max_epochs": 90,
-    "warmup_epochs": 0,
-    "epochs_to_run": 5,
-    "input_size": 256,
-    "batch_size": 256,
-    "momentum": 0.9,
-    "weight_decay": 0.0001,
-    "aux_weight": 0.04,
-    "aux_labels_type": "imagenet",
-    "restrict_aux_labels": true,
-    "freeze_backbone": false,
-    "cache_images_on_disk": true,
+    initial_lr: 0.01,
+    endlr: 0.0,
+    max_epochs: 90,
+    warmup_epochs: 0,
+    epochs_to_run: 5,
+    input_size: 256,
+    batch_size: 256,
+    momentum: 0.9,
+    weight_decay: 0.0001,
+    aux_weight: 0.04,
+    aux_labels_type: "imagenet",
+    restrict_aux_labels: true,
+    freeze_backbone: false,
+    cache_images_on_disk: true,
   });
   let optInputs = [
-    {type: "number", displayName: "Initial LR", param: "initial_lr"},
-    {type: "number", displayName: "End LR", param: "endlr"},
-    {type: "number", displayName: "Momentum", param: "momentum"},
-    {type: "number", displayName: "Weight decay", param: "weight_decay"},
-    {type: "number", displayName: "Warmup epochs", param: "warmup_epochs"},
-    {type: "number", displayName: "Max epochs", param: "max_epochs"},
-    {type: "number", displayName: "Epochs per job", param: "epochs_to_run"},
-  ]
+    { type: "number", displayName: "Initial LR", param: "initial_lr" },
+    { type: "number", displayName: "End LR", param: "endlr" },
+    { type: "number", displayName: "Momentum", param: "momentum" },
+    { type: "number", displayName: "Weight decay", param: "weight_decay" },
+    { type: "number", displayName: "Warmup epochs", param: "warmup_epochs" },
+    { type: "number", displayName: "Max epochs", param: "max_epochs" },
+    { type: "number", displayName: "Epochs per job", param: "epochs_to_run" },
+  ];
   let otherInputs = [
-    {type: "number", displayName: "Image input size", param: "input_size"},
-    {type: "number", displayName: "Batch size", param: "batch_size"},
-    {type: "number", displayName: "Aux loss weight", param: "aux_weight"},
-    {type: "checkbox", displayName: "Restrict aux labels", param: "restrict_aux_labels"},
-    {type: "checkbox", displayName: "Freeze backbone", param: "freeze_backbone"},
-    {type: "checkbox", displayName: "Cache images on disk", param: "cache_images_on_disk"},
-  ]
+    { type: "number", displayName: "Image input size", param: "input_size" },
+    { type: "number", displayName: "Batch size", param: "batch_size" },
+    { type: "number", displayName: "Aux loss weight", param: "aux_weight" },
+    {
+      type: "checkbox",
+      displayName: "Restrict aux labels",
+      param: "restrict_aux_labels",
+    },
+    {
+      type: "checkbox",
+      displayName: "Freeze backbone",
+      param: "freeze_backbone",
+    },
+    {
+      type: "checkbox",
+      displayName: "Cache images on disk",
+      param: "cache_images_on_disk",
+    },
+  ];
 
   const updateDnnKwargs = (param, value) => {
-    setDnnKwargs(state => {
-      return {...state, [param]: value};
+    setDnnKwargs((state) => {
+      return { ...state, [param]: value };
     });
   };
 
   const handleDnnKwargsChange = (e) => {
     var param = e.target.name;
-    if (e.target.type === "checkbox" ||
-        e.target.type === "switch") {
+    if (e.target.type === "checkbox" || e.target.type === "switch") {
       var value = e.target.checked;
     } else {
       var value = parseFloat(e.target.value);
@@ -161,15 +161,15 @@ const TrainPanel = ({
       cluster_id: clusterId,
       bucket: "foragerml",
       index_id: datasetInfo.index_id,
-      pos_tags: dnnPosTags.map(t => `${t.category}:${t.value}`),
-      neg_tags: dnnNegTags.map(t => `${t.category}:${t.value}`),
-      val_pos_tags: dnnValPosTags.map(t => `${t.category}:${t.value}`),
-      val_neg_tags: dnnValNegTags.map(t => `${t.category}:${t.value}`),
+      pos_tags: dnnPosTags.map((t) => `${t.category}:${t.value}`),
+      neg_tags: dnnNegTags.map((t) => `${t.category}:${t.value}`),
+      val_pos_tags: dnnValPosTags.map((t) => `${t.category}:${t.value}`),
+      val_neg_tags: dnnValNegTags.map((t) => `${t.category}:${t.value}`),
       augment_negs: dnnAugmentNegs,
-      include: dnnAugmentIncludeTags.map(t => `${t.category}:${t.value}`),
-      exclude: dnnAugmentExcludeTags.map(t => `${t.category}:${t.value}`),
+      include: dnnAugmentIncludeTags.map((t) => `${t.category}:${t.value}`),
+      exclude: dnnAugmentExcludeTags.map((t) => `${t.category}:${t.value}`),
       model_kwargs: dnnKwargs,
-    }
+    };
     if (prevModelId) {
       body.resume = prevModelId;
       body.model_kwargs.resume_training = true;
@@ -180,7 +180,7 @@ const TrainPanel = ({
 
     const r = await fetch(url, {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
     let data = await r.json();
@@ -202,12 +202,15 @@ const TrainPanel = ({
     const url = new URL(`${endpoints.modelStatus}/${trainingModelId}`);
     const modelStatus = await fetch(url, {
       method: "GET",
-    }).then(r => r.json());
+    }).then((r) => r.json());
     if (modelStatus.has_model && dnnIsTraining) {
-      console.log("training status next epoch",
-                  new Date().toLocaleTimeString(),
-                  dnnIsTraining, calledDnnTrain.current,
-                  trainingModelId)
+      console.log(
+        "training status next epoch",
+        new Date().toLocaleTimeString(),
+        dnnIsTraining,
+        calledDnnTrain.current,
+        trainingModelId
+      );
       // Start next epoch
       setPrevModelId(trainingModelId);
       setTrainingModelId(null);
@@ -215,8 +218,11 @@ const TrainPanel = ({
         setRequestDnnTraining(false);
       } else {
         setTrainingEpoch(
-          Math.min(dnnKwargs["max_epochs"] - 1,
-                   trainingEpoch + dnnKwargs["epochs_to_run"]));
+          Math.min(
+            dnnKwargs["max_epochs"] - 1,
+            trainingEpoch + dnnKwargs["epochs_to_run"]
+          )
+        );
       }
       setDnnIsTraining(false);
     } else if (modelStatus.failed && dnnIsTraining) {
@@ -231,7 +237,8 @@ const TrainPanel = ({
 
   useInterval(
     getTrainingStatus,
-    dnnIsTraining && trainingModelId ? STATUS_POLL_INTERVAL : null);
+    dnnIsTraining && trainingModelId ? STATUS_POLL_INTERVAL : null
+  );
 
   // Start training
   useEffect(() => {
@@ -245,9 +252,12 @@ const TrainPanel = ({
 
   const calledDnnTrain = useRef(false);
   useEffect(() => {
-    console.log("dnn call",
-                new Date().toLocaleTimeString(),
-                dnnIsTraining, calledDnnTrain.current)
+    console.log(
+      "dnn call",
+      new Date().toLocaleTimeString(),
+      dnnIsTraining,
+      calledDnnTrain.current
+    );
     if (dnnIsTraining && !calledDnnTrain.current) {
       calledDnnTrain.current = true;
       trainDnnOneEpoch();
@@ -271,12 +281,12 @@ const TrainPanel = ({
       cluster_id: clusterId,
       bucket: "foragerml",
       index_id: datasetInfo.index_id,
-    }
+    };
     const inferenceResponse = await fetch(url, {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    }).then(r => r.json());
+    }).then((r) => r.json());
 
     setInferenceEpoch(trainingEpoch - 1);
     setInferenceJobId(inferenceResponse.job_id);
@@ -286,7 +296,7 @@ const TrainPanel = ({
     const url = new URL(`${endpoints.stopModelInference}/${inferenceJobId}`);
     await fetch(url, {
       method: "POST",
-    }).then(r => r.json());
+    }).then((r) => r.json());
     setInferenceJobId(null);
     setDnnIsInferring(false);
   };
@@ -295,7 +305,7 @@ const TrainPanel = ({
     const url = new URL(`${endpoints.modelInferenceStatus}/${inferenceJobId}`);
     const inferenceStatus = await fetch(url, {
       method: "GET",
-    }).then(r => r.json());
+    }).then((r) => r.json());
     if (inferenceStatus.has_output) {
       setDnnIsInferring(false);
       setInferenceJobId(null);
@@ -303,12 +313,15 @@ const TrainPanel = ({
     setInferenceTimeLeft(inferenceStatus.time_left);
   };
 
-  useInterval(
-    getInferenceStatus,
-    inferenceJobId ? STATUS_POLL_INTERVAL : null);
+  useInterval(getInferenceStatus, inferenceJobId ? STATUS_POLL_INTERVAL : null);
 
   useEffect(() => {
-    if (prevModelId && !inferenceJobId && trainingEpoch > inferenceEpoch + 1 && !dnnIsInferring) {
+    if (
+      prevModelId &&
+      !inferenceJobId &&
+      trainingEpoch > inferenceEpoch + 1 &&
+      !dnnIsInferring
+    ) {
       setDnnIsInferring(true);
     }
   }, [prevModelId, inferenceJobId, trainingEpoch, inferenceEpoch]);
@@ -368,10 +381,10 @@ const TrainPanel = ({
     const url = new URL(`${endpoints.getModels}/${datasetName}`);
     const res = await fetch(url, {
       method: "GET",
-      headers: {"Content-Type": "application/json"},
-    }).then(res => res.json());
+      headers: { "Content-Type": "application/json" },
+    }).then((res) => res.json());
     setModelInfo(res.models);
-  }
+  };
 
   // On training finish
   useEffect(() => {
@@ -381,178 +394,244 @@ const TrainPanel = ({
   // On inference finish & once at initialization time
   useEffect(() => {
     if (inferenceJobId === null) updateModels();
-  }, [inferenceJobId])
+  }, [inferenceJobId]);
 
-  const timeLeftToString = (t) => (t && t > 0) ? new Date(Math.max(t, 0) * 1000).toISOString().substr(11, 8) : "estimating...";
+  const timeLeftToString = (t) =>
+    t && t > 0
+      ? new Date(Math.max(t, 0) * 1000).toISOString().substr(11, 8)
+      : "estimating...";
 
   const formatOptions = (d, idx) => {
     return (
       <FormGroup className="mx-1">
-        <Label className="mb-0" htmlFor={"formatInput" + d.param}>{d.displayName}</Label>
-        {(d.type === "switch" || d.type === "checkbox") ?
-         <CustomInput
-           id={"formatInput" + d.param}
-           type={d.type}
-           name={d.param}
-           checked={dnnKwargs[d.param]}
-           onChange={handleDnnKwargsChange}/> :
-         <Input
-           id={"formatInput" + d.param}
-           type={d.type}
-           name={d.param}
-           value={dnnKwargs[d.param]}
-           onChange={handleDnnKwargsChange}/>}
-      </FormGroup>);
+        <Label className="mb-0" htmlFor={"formatInput" + d.param}>
+          {d.displayName}
+        </Label>
+        {d.type === "switch" || d.type === "checkbox" ? (
+          <CustomInput
+            id={"formatInput" + d.param}
+            type={d.type}
+            name={d.param}
+            checked={dnnKwargs[d.param]}
+            onChange={handleDnnKwargsChange}
+          />
+        ) : (
+          <Input
+            id={"formatInput" + d.param}
+            type={d.type}
+            name={d.param}
+            value={dnnKwargs[d.param]}
+            onChange={handleDnnKwargsChange}
+          />
+        )}
+      </FormGroup>
+    );
   };
 
   if (!isVisible) return null;
   return (
     <>
       <div className="d-flex flex-row align-items-center justify-content-between mb-1">
-        {requestDnnTraining || dnnIsInferring ? <>
-          <div className="d-flex flex-row align-items-center">
-            <Spinner color="dark" className="my-1 mr-2" />
-            {clusterReady ?
-             <div>
-               <div style={{verticalAlign: "top", display: "inline-block"}}>
-                 Training model <b>{modelName} </b> &mdash;{" "}
-               </div>
-               <div style={{verticalAlign: "top", display: "inline-block"}}>
-                 <div>
-                   {requestDnnTraining ? "time left for training " + (dnnKwargs["epochs_to_run"] > 1 ? "epochs " + trainingEpoch + "-" + (trainingEpoch + dnnKwargs["epochs_to_run"]) : "epoch " + trainingEpoch) + ": " + timeLeftToString(trainingTimeLeft) : "training complete, waiting for inference"}
-                 </div>
-                 <div>
-                   {dnnIsInferring && <span>time left for inference epoch {inferenceEpoch}: {timeLeftToString(inferenceTimeLeft)}</span>}
-                 </div>
-               </div>
-               <br /> TensorBoard:{" "} {trainingTensorboardUrl ? <a href={trainingTensorboardUrl} target="_blank">link</a> : "loading..."}
-             </div> :
-             <b>Starting cluster</b>
-            }
-          </div>
-          <Button
-            color="danger"
-            onClick={() => setRequestDnnTraining(false)}
-          >Stop training</Button>
-        </> : <>
-          <FormGroup className="mb-0">
-            <select className="custom-select mr-2" value={dnnType} onChange={e => setDnnType(e.target.value)}>
-              {dnns.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
-            </select>
-            <ReactSVG className="icon" src="assets/arrow-caret.svg" />
-          </FormGroup>
-          <Input
-            className="mr-2"
-            placeholder="Model name"
-            value={modelName}
-            onChange={(e) => setModelName(e.target.value)}
-            spellcheck="false"
-          />
-          <CategoryInput
-            id="dnn-pos-bar"
-            className="mr-2"
-            placeholder="Positive example tags"
-            disabled={requestDnnTraining}
-            customModesByCategory={customModesByCategory}
-            selected={dnnPosTags}
-            setSelected={setDnnPosTags}
-          />
-          <CategoryInput
-            id="dnn-neg-bar"
-            className="mr-2"
-            placeholder="Negative example tags"
-            disabled={requestDnnTraining}
-            customModesByCategory={customModesByCategory}
-            selected={dnnNegTags}
-            setSelected={setDnnNegTags}
-          />
-          <div className="my-2 custom-control custom-checkbox">
-            <input
-              type="checkbox"
-              className="custom-control-input"
-              id="dnn-augment-negs-checkbox"
-              disabled={requestDnnTraining}
-              checked={dnnAugmentNegs}
-              onChange={(e) => setDnnAugmentNegs(e.target.checked)}
+        {requestDnnTraining || dnnIsInferring ? (
+          <>
+            <div className="d-flex flex-row align-items-center">
+              <Spinner color="dark" className="my-1 mr-2" />
+              {clusterReady ? (
+                <div>
+                  <div
+                    style={{ verticalAlign: "top", display: "inline-block" }}
+                  >
+                    Training model <b>{modelName} </b> &mdash;{" "}
+                  </div>
+                  <div
+                    style={{ verticalAlign: "top", display: "inline-block" }}
+                  >
+                    <div>
+                      {requestDnnTraining
+                        ? "time left for training " +
+                          (dnnKwargs["epochs_to_run"] > 1
+                            ? "epochs " +
+                              trainingEpoch +
+                              "-" +
+                              (trainingEpoch + dnnKwargs["epochs_to_run"])
+                            : "epoch " + trainingEpoch) +
+                          ": " +
+                          timeLeftToString(trainingTimeLeft)
+                        : "training complete, waiting for inference"}
+                    </div>
+                    <div>
+                      {dnnIsInferring && (
+                        <span>
+                          time left for inference epoch {inferenceEpoch}:{" "}
+                          {timeLeftToString(inferenceTimeLeft)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <br /> TensorBoard:{" "}
+                  {trainingTensorboardUrl ? (
+                    <a href={trainingTensorboardUrl} target="_blank">
+                      link
+                    </a>
+                  ) : (
+                    "loading..."
+                  )}
+                </div>
+              ) : (
+                <b>Starting cluster</b>
+              )}
+            </div>
+            <Button color="danger" onClick={() => setRequestDnnTraining(false)}>
+              Stop training
+            </Button>
+          </>
+        ) : (
+          <>
+            <FormGroup className="mb-0">
+              <select
+                className="custom-select mr-2"
+                value={dnnType}
+                onChange={(e) => setDnnType(e.target.value)}
+              >
+                {dnns.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.label}
+                  </option>
+                ))}
+              </select>
+              <ReactSVG className="icon" src="assets/arrow-caret.svg" />
+            </FormGroup>
+            <Input
+              className="mr-2"
+              placeholder="Model name"
+              value={modelName}
+              onChange={(e) => setModelName(e.target.value)}
+              spellcheck="false"
             />
-            <label className="custom-control-label text-nowrap mr-2" htmlFor="dnn-augment-negs-checkbox">
-              Auto-augment negative set
-            </label>
-          </div>
-          <Button
-            color="light"
-            onClick={() => setRequestDnnTraining(true)}
-            disabled={disabled || dnnPosTags.length === 0 || (dnnNegTags.length === 0 && !dnnAugmentNegs)}
-            >Start training
-          </Button>
-        </>}
+            <CategoryInput
+              id="dnn-pos-bar"
+              className="mr-2"
+              placeholder="Positive example tags"
+              disabled={requestDnnTraining}
+              customModesByCategory={customModesByCategory}
+              selected={dnnPosTags}
+              setSelected={setDnnPosTags}
+            />
+            <CategoryInput
+              id="dnn-neg-bar"
+              className="mr-2"
+              placeholder="Negative example tags"
+              disabled={requestDnnTraining}
+              customModesByCategory={customModesByCategory}
+              selected={dnnNegTags}
+              setSelected={setDnnNegTags}
+            />
+            <div className="my-2 custom-control custom-checkbox">
+              <input
+                type="checkbox"
+                className="custom-control-input"
+                id="dnn-augment-negs-checkbox"
+                disabled={requestDnnTraining}
+                checked={dnnAugmentNegs}
+                onChange={(e) => setDnnAugmentNegs(e.target.checked)}
+              />
+              <label
+                className="custom-control-label text-nowrap mr-2"
+                htmlFor="dnn-augment-negs-checkbox"
+              >
+                Auto-augment negative set
+              </label>
+            </div>
+            <Button
+              color="light"
+              onClick={() => setRequestDnnTraining(true)}
+              disabled={
+                disabled ||
+                dnnPosTags.length === 0 ||
+                (dnnNegTags.length === 0 && !dnnAugmentNegs)
+              }
+            >
+              Start training
+            </Button>
+          </>
+        )}
       </div>
-      {!requestDnnTraining && <div className="d-flex flex-row align-items-center mb-2">
-        <FeatureInput
-          id="checkpoint-model-bar"
-          placeholder="Checkpoint to train from (optional)"
-          features={modelInfo.filter(m => m.latest.has_checkpoint)}
-          selected={dnnCheckpointModel}
-          setSelected={setDnnCheckpointModel}
-        />
-        {dnnAugmentNegs && <>
-          <CategoryInput
-            id="dnn-augment-negs-include-bar"
-            className="ml-2"
-            placeholder="Tags to include in auto-negative pool"
-            customModesByCategory={customModesByCategory}
-            selected={dnnAugmentIncludeTags}
-            setSelected={setDnnAugmentIncludeTags}
+      {!requestDnnTraining && (
+        <div className="d-flex flex-row align-items-center mb-2">
+          <FeatureInput
+            id="checkpoint-model-bar"
+            placeholder="Checkpoint to train from (optional)"
+            features={modelInfo.filter((m) => m.latest.has_checkpoint)}
+            selected={dnnCheckpointModel}
+            setSelected={setDnnCheckpointModel}
           />
-          <CategoryInput
-            id="dnn-augment-negs-exclude-bar"
-            className="ml-2"
-            placeholder="Tags to exclude from auto-negative pool"
-            customModesByCategory={customModesByCategory}
-            selected={dnnAugmentExcludeTags}
-            setSelected={setDnnAugmentExcludeTags}
-          />
-        </>}
-      </div>}
-      {!requestDnnTraining && <a
-        href="#"
-        className="text-small text-muted"
-        onClick={e => {
-          setDnnAdvancedIsOpen(!dnnAdvancedIsOpen);
-          e.preventDefault();
-        }}
-      >
-        {dnnAdvancedIsOpen ? "Hide" : "Show"} advanced training options
-      </a>}
-      {!requestDnnTraining &&
-      <Collapse isOpen={dnnAdvancedIsOpen && !requestDnnTraining} timeout={200}>
-        <div>
-          <CategoryInput
-            id="dnn-val-pos-bar"
-            className="mr-2"
-            placeholder="Validation positive example tags"
-            disabled={requestDnnTraining}
-            customModesByCategory={customModesByCategory}
-            selected={dnnValPosTags}
-            setSelected={setDnnValPosTags}
-          />
-          <CategoryInput
-            id="dnn-val-neg-bar"
-            className="mr-2"
-            placeholder="Validation negative example tags"
-            disabled={requestDnnTraining}
-            customModesByCategory={customModesByCategory}
-            selected={dnnValNegTags}
-            setSelected={setDnnValNegTags}
-          />
-          <div className="d-flex flex-row">
-            {optInputs.map(formatOptions)}
-          </div>
-          <div className="d-flex flex-row my-1">
-            {otherInputs.map(formatOptions)}
-          </div>
+          {dnnAugmentNegs && (
+            <>
+              <CategoryInput
+                id="dnn-augment-negs-include-bar"
+                className="ml-2"
+                placeholder="Tags to include in auto-negative pool"
+                customModesByCategory={customModesByCategory}
+                selected={dnnAugmentIncludeTags}
+                setSelected={setDnnAugmentIncludeTags}
+              />
+              <CategoryInput
+                id="dnn-augment-negs-exclude-bar"
+                className="ml-2"
+                placeholder="Tags to exclude from auto-negative pool"
+                customModesByCategory={customModesByCategory}
+                selected={dnnAugmentExcludeTags}
+                setSelected={setDnnAugmentExcludeTags}
+              />
+            </>
+          )}
         </div>
-      </Collapse>}
+      )}
+      {!requestDnnTraining && (
+        <a
+          href="#"
+          className="text-small text-muted"
+          onClick={(e) => {
+            setDnnAdvancedIsOpen(!dnnAdvancedIsOpen);
+            e.preventDefault();
+          }}
+        >
+          {dnnAdvancedIsOpen ? "Hide" : "Show"} advanced training options
+        </a>
+      )}
+      {!requestDnnTraining && (
+        <Collapse
+          isOpen={dnnAdvancedIsOpen && !requestDnnTraining}
+          timeout={200}
+        >
+          <div>
+            <CategoryInput
+              id="dnn-val-pos-bar"
+              className="mr-2"
+              placeholder="Validation positive example tags"
+              disabled={requestDnnTraining}
+              customModesByCategory={customModesByCategory}
+              selected={dnnValPosTags}
+              setSelected={setDnnValPosTags}
+            />
+            <CategoryInput
+              id="dnn-val-neg-bar"
+              className="mr-2"
+              placeholder="Validation negative example tags"
+              disabled={requestDnnTraining}
+              customModesByCategory={customModesByCategory}
+              selected={dnnValNegTags}
+              setSelected={setDnnValNegTags}
+            />
+            <div className="d-flex flex-row">
+              {optInputs.map(formatOptions)}
+            </div>
+            <div className="d-flex flex-row my-1">
+              {otherInputs.map(formatOptions)}
+            </div>
+          </div>
+        </Collapse>
+      )}
     </>
   );
 };

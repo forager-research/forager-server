@@ -169,6 +169,10 @@ def dev_frontend(q, dev):
         os.environ.setdefault(
             "REACT_APP_SERVER_URL", f"http://localhost:{BACKEND_PORT}"
         )
+        os.environ.setdefault(
+            "REACT_APP_SERVER_PORT",
+            f"{BACKEND_PORT}",
+        )
         os.environ.setdefault("PORT", f"{FRONTEND_PORT}")
         print("Running frontend...")
         q.put([True])

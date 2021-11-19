@@ -71,6 +71,7 @@ def build_frontend(cmd):
                 # Don't build if we are inside an sdist
                 npm_env = os.environ.copy()
                 npm_env.update({"REACT_APP_SERVER_URL": "http://localhost:8000"})
+                npm_env.update({"REACT_APP_SERVER_PORT": "8000"})
                 subprocess.run(
                     args=["npm", "install"], cwd=FRONTEND_NODE_DIR, check=True
                 )
@@ -167,7 +168,7 @@ def find_package_data(sdist=True):
 
 
 def find_package_deps():
-    install_deps = ["uvicorn", "sanic", "readchar", "tqdm", "aiohttp"]
+    install_deps = ["uvicorn", "sanic", "readchar", "tqdm", "aiohttp", "toml"]
     for package_path in [
         BACKEND_DIR,
         EMBEDDING_SERVER_DIR,

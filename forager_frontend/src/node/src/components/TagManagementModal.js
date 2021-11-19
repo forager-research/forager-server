@@ -1,4 +1,10 @@
-import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 import {
   Button,
   Form,
@@ -11,11 +17,13 @@ import {
   ModalBody,
 } from "reactstrap";
 
+import { endpoints } from "../constants.js";
+
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faSort,
   faSortDown,
-  faSortUp
+  faSortUp,
 } from "@fortawesome/free-solid-svg-icons";
 
 import styled from "styled-components";
@@ -25,11 +33,6 @@ import sortBy from "lodash/sortBy";
 import toPairs from "lodash/toPairs";
 
 import { ConfirmModal } from "../components";
-
-const endpoints = fromPairs(toPairs({
-  updateCategory: 'update_category',
-  deleteCategory: 'delete_category',
-}).map(([name, endpoint]) => [name, `${process.env.REACT_APP_SERVER_URL}/api/${endpoint}`]));
 
 // TODO(mihirg): Combine with this same constant in other places
 const BUILT_IN_MODES = [
@@ -51,14 +54,14 @@ const TagManagementModal = ({
   categoryCounts,
   categoryDispatch,
   username,
-  isReadOnly
+  isReadOnly,
 }) => {
   // Aggregate all non-built-in modes into "other" count
   const displayCounts = useMemo(() => {
     let result = {};
     for (const [category, counts] of Object.entries(categoryCounts)) {
       let innerResult = {};
-      innerResult["OTHER"] = 0
+      innerResult["OTHER"] = 0;
       for (const [mode, count] of Object.entries(counts)) {
         if (BUILT_IN_MODES.some(([m]) => m === mode)) {
           innerResult[mode] = count;
@@ -70,7 +73,10 @@ const TagManagementModal = ({
     }
     return result;
   }, [categoryCounts]);
-  const categoryList = useMemo(() => sortBy(Object.keys(displayCounts), c => c.toLowerCase()), [displayCounts]);
+  const categoryList = useMemo(
+    () => sortBy(Object.keys(displayCounts), (c) => c.toLowerCase()),
+    [displayCounts]
+  );
 
   const [categories, setCategories] = useState([]);
 
@@ -89,9 +95,14 @@ const TagManagementModal = ({
     const copy = arr.slice(0);
     const m = orderAscending ? 1 : -1;
     if (orderBy === "name") {
-      copy.sort((a, b) => m * (a.tag.toLowerCase() < b.tag.toLowerCase() ? -1 : 1));
+      copy.sort(
+        (a, b) => m * (a.tag.toLowerCase() < b.tag.toLowerCase() ? -1 : 1)
+      );
     } else {
-      copy.sort((a, b) => m * (displayCounts[a.tag][orderBy] - displayCounts[b.tag][orderBy]));
+      copy.sort(
+        (a, b) =>
+          m * (displayCounts[a.tag][orderBy] - displayCounts[b.tag][orderBy])
+      );
     }
     return copy;
   };
@@ -138,9 +149,9 @@ const TagManagementModal = ({
 
     const res = await fetch(url, {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    }).then(res => res.json());
+    }).then((res) => res.json());
 
     categoryDispatch({
       type: "RENAME_CATEGORY",
@@ -161,9 +172,9 @@ const TagManagementModal = ({
 
     const res = await fetch(url, {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    }).then(res => res.json());
+    }).then((res) => res.json());
 
     categoryDispatch({
       type: "DELETE_CATEGORY",
@@ -172,13 +183,13 @@ const TagManagementModal = ({
   };
 
   useEffect(() => {
-    setCategories(sortCategories(categoryList.map(
-      (tag, i) => ({tag, srcIdx: i})
-    )));
+    setCategories(
+      sortCategories(categoryList.map((tag, i) => ({ tag, srcIdx: i })))
+    );
   }, [JSON.stringify(categoryList)]);
 
   useEffect(() => {
-    setCategories(prev => sortCategories(prev))
+    setCategories((prev) => sortCategories(prev));
   }, [categoryCounts, orderBy, orderAscending]);
 
   /* useEffect(async () => {
@@ -213,14 +224,21 @@ const TagManagementModal = ({
                   value={obj.tag}
                   disabled={isReadOnly}
                   onChange={(e) => setCategoryByIndex(e.target.value, i)}
-                  onKeyDown={(e) => { if (e.keyCode === 13) e.target.blur(); }}
+                  onKeyDown={(e) => {
+                    if (e.keyCode === 13) e.target.blur();
+                  }}
                   onBlur={(e) => updateCategoryByIndex(e, i, obj.srcIdx)}
                 />
               </td>
-              {BUILT_IN_MODES.map(([mode]) => <td>{counts[mode] || 0}</td>)}
+              {BUILT_IN_MODES.map(([mode]) => (
+                <td>{counts[mode] || 0}</td>
+              ))}
               <td>{counts["OTHER"]}</td>
               <td>
-                <Button close disabled={isReadOnly} onClick={(e) => {
+                <Button
+                  close
+                  disabled={isReadOnly}
+                  onClick={(e) => {
                     setConfirmCategory(obj.tag);
                     setConfirmCategoryIdx(i);
                     toggleConfirmIsOpen();
@@ -233,7 +251,7 @@ const TagManagementModal = ({
         })}
       </tbody>
     );
-  }
+  };
 
   return (
     <Modal
@@ -243,27 +261,35 @@ const TagManagementModal = ({
       backdropTransition={{ timeout: 75 }}
       size="lg"
     >
-      <ModalHeader toggle={toggle}>
-        Manage Tags
-      </ModalHeader>
+      <ModalHeader toggle={toggle}>Manage Tags</ModalHeader>
       <ModalBody>
         <div className="custom-switch custom-control mr-4">
-          <Input type="checkbox" className="custom-control-input"
+          <Input
+            type="checkbox"
+            className="custom-control-input"
             id="hide-others-tags-switch"
             checked={hideOthersTags}
             onChange={(e) => setHideOthersTags(e.target.checked)}
           />
-          <label className="custom-control-label text-nowrap" htmlFor="hide-others-tags-switch">
+          <label
+            className="custom-control-label text-nowrap"
+            htmlFor="hide-others-tags-switch"
+          >
             Hide tags from others
           </label>
         </div>
         <div className="custom-switch custom-control mr-4">
-          <Input type="checkbox" className="custom-control-input"
+          <Input
+            type="checkbox"
+            className="custom-control-input"
             id="hide-ingest-tags-switch"
             checked={hideIngestTags}
             onChange={(e) => setHideIngestTags(e.target.checked)}
           />
-          <label className="custom-control-label text-nowrap" htmlFor="hide-ingest-tags-switch">
+          <label
+            className="custom-control-label text-nowrap"
+            htmlFor="hide-ingest-tags-switch"
+          >
             Hide tags from ingest
           </label>
         </div>
@@ -271,18 +297,40 @@ const TagManagementModal = ({
           <Table hover borderless size="sm">
             <thead>
               <tr>
-                <th style={{cursor: "pointer"}} onClick={() => setOrderBy("name")}>
-                  Tag Name <FontAwesomeIcon icon={
-                    orderBy !== "name" ? faSort : (orderAscending ? faSortUp : faSortDown)
-                  } />
+                <th
+                  style={{ cursor: "pointer" }}
+                  onClick={() => setOrderBy("name")}
+                >
+                  Tag Name{" "}
+                  <FontAwesomeIcon
+                    icon={
+                      orderBy !== "name"
+                        ? faSort
+                        : orderAscending
+                        ? faSortUp
+                        : faSortDown
+                    }
+                  />
                 </th>
-                {BUILT_IN_MODES.concat([["OTHER", "Other"]]).map(([mode, name]) => (
-                  <th style={{cursor: "pointer"}} onClick={() => setOrderBy(mode)}>
-                    {name} <FontAwesomeIcon icon={
-                      orderBy !== mode ? faSort : (orderAscending ? faSortUp : faSortDown)
-                    } />
-                  </th>
-                ))}
+                {BUILT_IN_MODES.concat([["OTHER", "Other"]]).map(
+                  ([mode, name]) => (
+                    <th
+                      style={{ cursor: "pointer" }}
+                      onClick={() => setOrderBy(mode)}
+                    >
+                      {name}{" "}
+                      <FontAwesomeIcon
+                        icon={
+                          orderBy !== mode
+                            ? faSort
+                            : orderAscending
+                            ? faSortUp
+                            : faSortDown
+                        }
+                      />
+                    </th>
+                  )
+                )}
               </tr>
             </thead>
             {tableBodyFromTags()}
@@ -292,12 +340,28 @@ const TagManagementModal = ({
         <ConfirmModal
           isOpen={confirmIsOpen}
           toggle={toggleConfirmIsOpen}
-          message={<span>Are you sure you want to delete the tag <strong>{confirmCategory}</strong>? This action cannot be undone.</span>}
-          confirmBtn={<Button color="danger" onClick={(e) => {
-            deleteCategoryByIndex(confirmCategoryIdx);
-            toggleConfirmIsOpen();
-          }}>Delete</Button>}
-          cancelBtn={<Button color="light" onClick={(e) => toggleConfirmIsOpen()}>Cancel</Button>}
+          message={
+            <span>
+              Are you sure you want to delete the tag{" "}
+              <strong>{confirmCategory}</strong>? This action cannot be undone.
+            </span>
+          }
+          confirmBtn={
+            <Button
+              color="danger"
+              onClick={(e) => {
+                deleteCategoryByIndex(confirmCategoryIdx);
+                toggleConfirmIsOpen();
+              }}
+            >
+              Delete
+            </Button>
+          }
+          cancelBtn={
+            <Button color="light" onClick={(e) => toggleConfirmIsOpen()}>
+              Cancel
+            </Button>
+          }
         />
       </ModalBody>
     </Modal>
